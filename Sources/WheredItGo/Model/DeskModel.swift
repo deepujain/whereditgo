@@ -61,7 +61,7 @@ final class DeskModel {
     @ObservationIgnored private let defaults = UserDefaults.standard
     @ObservationIgnored private let log = Logger(subsystem: "app.whereditgo.mac", category: "desk")
 
-    static let developDuration = 3.4
+    static let developDuration = 1.6
     static let maxShots = 40
 
     var visibleShots: [Shot] { Array(shots.prefix(pileSize)) }
@@ -113,7 +113,7 @@ final class DeskModel {
     private func folderChanged() {
         scanTask?.cancel()
         scanTask = Task {
-            try? await Task.sleep(for: .milliseconds(180))
+            try? await Task.sleep(for: .milliseconds(40))
             guard !Task.isCancelled else { return }
             scan(initial: false)
         }
@@ -159,20 +159,35 @@ final class DeskModel {
         }
         let shot = Shot(url: url, date: found.created, app: Self.frontmostAppName())
         log.info("New screenshot \(url.lastPathComponent, privacy: .private) from \(shot.app ?? "unknown", privacy: .public)")
-        load(shot)
         if defaults.bool(forKey: Prefs.copyToClipboard) { copy(shot) }
         arrivals += 1
-        queue.append(shot)
-        if !presenting { Task { await drainQueue() } }
+        Task {
+            // The picture is ready before the camera fires, so the print never comes out blank.
+            await loadImage(shot)
+            readText(shot)
+            queue.append(shot)
+            if !presenting { await drainQueue() }
+        }
     }
 
     private func load(_ shot: Shot) {
+        Task {
+            await loadImage(shot)
+            readText(shot)
+        }
+    }
+
+    private func loadImage(_ shot: Shot) async {
+        let url = shot.url
+        if let thumbnail = await Task.detached(priority: .userInitiated, operation: { ShotImaging.thumbnail(url, maxPixel: 720) }).value {
+            shot.image = NSImage(cgImage: thumbnail.cgImage, size: .zero)
+        }
+    }
+
+    private func readText(_ shot: Shot) {
         let url = shot.url
         let smart = defaults.bool(forKey: Prefs.smartCaptions)
         Task {
-            if let thumbnail = await Task.detached(priority: .userInitiated, operation: { ShotImaging.thumbnail(url, maxPixel: 720) }).value {
-                shot.image = NSImage(cgImage: thumbnail.cgImage, size: .zero)
-            }
             guard let reading = await Task.detached(priority: .utility, operation: { ShotImaging.read(url) }).value else { return }
             shot.text = reading.text
             if smart, let headline = reading.headline {
@@ -221,39 +236,41 @@ final class DeskModel {
 
         if !cameraInPanel {
             cameraInPanel = true
-            try? await Task.sleep(for: .milliseconds(30))
-            withAnimation(.spring(duration: 0.5, bounce: 0.35)) { cameraShown = true }
-            try? await Task.sleep(for: .milliseconds(420))
+            try? await Task.sleep(for: .milliseconds(16))
+            withAnimation(.spring(duration: 0.3, bounce: 0.3)) { cameraShown = true }
+            try? await Task.sleep(for: .milliseconds(170))
         }
 
-        withAnimation(.easeOut(duration: 0.06)) { flash = 1 }
-        try? await Task.sleep(for: .milliseconds(70))
-        withAnimation(.easeOut(duration: 0.7)) { flash = 0 }
+        withAnimation(.easeOut(duration: 0.05)) { flash = 1 }
+        try? await Task.sleep(for: .milliseconds(50))
+        withAnimation(.easeOut(duration: 0.5)) { flash = 0 }
 
         eject = 0
         developBonus = 0
-        developStart = Date().addingTimeInterval(0.25)
+        developStart = Date().addingTimeInterval(0.1)
         printing = shot
-        try? await Task.sleep(for: .milliseconds(40))
-        withAnimation(.timingCurve(0.16, 0.84, 0.3, 1, duration: 1.4)) { eject = 1 }
-        try? await Task.sleep(for: .milliseconds(1300))
-        withAnimation(.easeOut(duration: 0.25)) { hintVisible = true }
+        try? await Task.sleep(for: .milliseconds(16))
+        withAnimation(.timingCurve(0.16, 0.84, 0.3, 1, duration: 0.75)) { eject = 1 }
+        try? await Task.sleep(for: .milliseconds(650))
+        if developProgress(at: .now) < 0.5 {
+            withAnimation(.easeOut(duration: 0.2)) { hintVisible = true }
+        }
 
         let deadline = Date().addingTimeInterval(Self.developDuration + 1)
         while developProgress(at: .now) < 1, Date() < deadline {
-            if developProgress(at: .now) > 0.8, hintVisible {
-                withAnimation(.easeIn(duration: 0.25)) { hintVisible = false }
+            if developProgress(at: .now) > 0.75, hintVisible {
+                withAnimation(.easeIn(duration: 0.2)) { hintVisible = false }
             }
-            try? await Task.sleep(for: .milliseconds(100))
+            try? await Task.sleep(for: .milliseconds(50))
         }
-        withAnimation(.easeIn(duration: 0.2)) { hintVisible = false }
-        try? await Task.sleep(for: .milliseconds(queue.isEmpty ? 900 : 300))
+        withAnimation(.easeIn(duration: 0.15)) { hintVisible = false }
+        try? await Task.sleep(for: .milliseconds(queue.isEmpty ? 350 : 150))
 
-        withAnimation(.spring(duration: 0.7, bounce: 0.22)) {
+        withAnimation(.spring(duration: 0.55, bounce: 0.22)) {
             insert(shot)
             printing = nil
         }
-        try? await Task.sleep(for: .milliseconds(380))
+        try? await Task.sleep(for: .milliseconds(300))
         log.info("Print landed: \(shot.title, privacy: .private); pile has \(self.shots.count)")
         playLanding()
         withAnimation(.spring(duration: 0.18, bounce: 0.6)) { cameraHop = true }

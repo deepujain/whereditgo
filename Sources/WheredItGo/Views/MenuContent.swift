@@ -30,6 +30,12 @@ struct MenuContent: View {
             }
         }
 
+        if ScreenshotFolder.showsFloatingThumbnail {
+            Divider()
+            Button("Make Prints Instant") { ScreenshotFolder.setShowsFloatingThumbnail(false) }
+                .help(Text("Turns off the macOS floating thumbnail, which holds each screenshot back for about five seconds."))
+        }
+
         Divider()
         Toggle("Keep Pile on Screen", isOn: $showPile)
         Button("Open Screenshots Folder") { model.openFolder() }
