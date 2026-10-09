@@ -1,0 +1,466 @@
+import AppKit
+import Observation
+import OSLog
+import SwiftUI
+
+struct PanelLayout: Equatable {
+    var visible: Bool
+    var camera: Bool
+    var expanded: Bool
+    var count: Int
+    var corner: Corner
+}
+
+@MainActor
+@Observable
+final class DeskModel {
+    private(set) var shots: [Shot] = []
+    private(set) var printing: Shot?
+    private(set) var cameraInPanel = false
+    private(set) var expandedInPanel = false
+    private(set) var corner = Corner.bottomTrailing
+    private(set) var pileSize = 6
+    private(set) var folderURL = ScreenshotFolder.current
+    private(set) var folderReadable = true
+    private(set) var arrivals = 0
+
+    var cameraShown = false
+    var flash = 0.0
+    var eject = 0.0
+    var wiggle = 0.0
+    var hintVisible = false
+    var pileExpanded = false
+    var hoveredShot: Shot.ID?
+    private(set) var pointerInside = false
+    private(set) var sweeping = false
+    private(set) var tossed: Set<Shot.ID> = []
+    private(set) var sweptCount = 0
+    private var showPileAlways = true
+    private var lingering = false
+
+    @ObservationIgnored private var developStart = Date.distantFuture
+    @ObservationIgnored private var developBonus = 0.0
+    @ObservationIgnored private var watcher: FolderWatcher?
+    @ObservationIgnored private var seen = Set<String>()
+    @ObservationIgnored private var queue: [Shot] = []
+    @ObservationIgnored private var presenting = false
+    @ObservationIgnored private var scanTask: Task<Void, Never>?
+    @ObservationIgnored private var lingerTask: Task<Void, Never>?
+    @ObservationIgnored private var collapseTask: Task<Void, Never>?
+    @ObservationIgnored private var undoTask: Task<Void, Never>?
+    @ObservationIgnored private var swept: [Shot] = []
+    @ObservationIgnored private var lastPointerX: CGFloat?
+    @ObservationIgnored private var pointer: (inward: CGFloat, up: CGFloat)?
+    @ObservationIgnored private var lastDirection: CGFloat = 0
+    @ObservationIgnored private var travel: CGFloat = 0
+    @ObservationIgnored private let launched = Date()
+    @ObservationIgnored private let defaults = UserDefaults.standard
+    @ObservationIgnored private let log = Logger(subsystem: "app.whereditgo.mac", category: "desk")
+
+    static let developDuration = 3.4
+    static let maxShots = 40
+
+    var visibleShots: [Shot] { Array(shots.prefix(pileSize)) }
+    var todayCount: Int { shots.filter { Calendar.current.isDateInToday($0.date) }.count }
+    var isVisible: Bool {
+        cameraInPanel || sweptCount > 0 || (!shots.isEmpty && (showPileAlways || lingering || expandedInPanel))
+    }
+    var canSweep: Bool { !shots.isEmpty && !sweeping && printing == nil }
+
+    var panelLayout: PanelLayout {
+        PanelLayout(visible: isVisible, camera: cameraInPanel, expanded: expandedInPanel,
+                    count: visibleShots.count, corner: corner)
+    }
+
+    // MARK: Lifecycle
+
+    func start() {
+        Prefs.register()
+        reloadPrefs()
+        NotificationCenter.default.addObserver(forName: UserDefaults.didChangeNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.reloadPrefs() }
+        }
+        watch(ScreenshotFolder.current, initial: true)
+    }
+
+    /// Picks up a new screenshot location chosen in the Screenshot app.
+    func refreshFolder() {
+        let folder = ScreenshotFolder.current
+        guard folder != folderURL else { return scan(initial: false) }
+        watch(folder, initial: false)
+    }
+
+    private func watch(_ folder: URL, initial: Bool) {
+        folderURL = folder
+        watcher = FolderWatcher(url: folder) { [weak self] in
+            Task { @MainActor in self?.folderChanged() }
+        }
+        scan(initial: initial)
+    }
+
+    private func reloadPrefs() {
+        corner = Corner(rawValue: defaults.string(forKey: Prefs.corner) ?? "") ?? .bottomTrailing
+        pileSize = min(10, max(3, defaults.integer(forKey: Prefs.pileSize)))
+        showPileAlways = defaults.bool(forKey: Prefs.showPile)
+    }
+
+    // MARK: Folder scanning
+
+    private func folderChanged() {
+        scanTask?.cancel()
+        scanTask = Task {
+            try? await Task.sleep(for: .milliseconds(180))
+            guard !Task.isCancelled else { return }
+            scan(initial: false)
+        }
+    }
+
+    private func scan(initial: Bool) {
+        let folder = folderURL
+        Task {
+            let found = await Task.detached(priority: .userInitiated) { ScreenshotFolder.screenshots(in: folder) }.value
+            folderReadable = await Task.detached { ScreenshotFolder.isReadable(folder) }.value
+            ingest(found, initial: initial)
+        }
+    }
+
+    private func ingest(_ found: [FoundShot], initial: Bool) {
+        let missing = shots.filter { !FileManager.default.fileExists(atPath: $0.url.path) }
+        if !missing.isEmpty {
+            withAnimation(.spring(duration: 0.4)) { shots.removeAll { shot in missing.contains { $0 === shot } } }
+        }
+
+        if initial {
+            log.info("Watching \(self.folderURL.path, privacy: .private): \(found.count) screenshots, readable: \(self.folderReadable)")
+            found.forEach { seen.insert($0.url.path) }
+            shots = found.filter { Calendar.current.isDateInToday($0.created) }
+                .prefix(Self.maxShots)
+                .map { Shot(url: $0.url, date: $0.created, app: nil) }
+            shots.forEach(load)
+            return
+        }
+
+        let fresh = found.filter { !seen.contains($0.url.path) && $0.created > launched.addingTimeInterval(-10) }
+        for item in fresh.reversed() {
+            seen.insert(item.url.path)
+            arrive(item)
+        }
+    }
+
+    private func arrive(_ found: FoundShot) {
+        var url = found.url
+        if defaults.bool(forKey: Prefs.tidyDesktop), let moved = ScreenshotFolder.archive(url, created: found.created) {
+            url = moved
+            seen.insert(moved.path)
+        }
+        let shot = Shot(url: url, date: found.created, app: Self.frontmostAppName())
+        log.info("New screenshot \(url.lastPathComponent, privacy: .private) from \(shot.app ?? "unknown", privacy: .public)")
+        load(shot)
+        if defaults.bool(forKey: Prefs.copyToClipboard) { copy(shot) }
+        arrivals += 1
+        queue.append(shot)
+        if !presenting { Task { await drainQueue() } }
+    }
+
+    private func load(_ shot: Shot) {
+        let url = shot.url
+        let smart = defaults.bool(forKey: Prefs.smartCaptions)
+        Task {
+            if let thumbnail = await Task.detached(priority: .userInitiated, operation: { ShotImaging.thumbnail(url, maxPixel: 720) }).value {
+                shot.image = NSImage(cgImage: thumbnail.cgImage, size: .zero)
+            }
+            guard smart else { return }
+            if let headline = await Task.detached(priority: .utility, operation: { ShotImaging.headline(url) }).value {
+                withAnimation(.easeInOut(duration: 0.4)) { shot.title = headline }
+            }
+        }
+    }
+
+    private static func frontmostAppName() -> String? {
+        guard let app = NSWorkspace.shared.frontmostApplication,
+              app.bundleIdentifier != Bundle.main.bundleIdentifier,
+              app.bundleIdentifier != "com.apple.screencaptureui" else { return nil }
+        return app.localizedName
+    }
+
+    // MARK: Printing
+
+    func developProgress(at date: Date) -> Double {
+        min(1, max(0, date.timeIntervalSince(developStart) / Self.developDuration + developBonus))
+    }
+
+    private var reduceMotion: Bool { NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }
+
+    private func drainQueue() async {
+        presenting = true
+        collapse(animated: false)
+        while !queue.isEmpty {
+            await runPrint(queue.removeFirst())
+        }
+        presenting = false
+        guard cameraInPanel else { return linger() }
+        withAnimation(.easeIn(duration: 0.28)) { cameraShown = false }
+        try? await Task.sleep(for: .milliseconds(300))
+        if !presenting {
+            cameraInPanel = false
+            linger()
+        }
+    }
+
+    private func runPrint(_ shot: Shot) async {
+        if reduceMotion {
+            withAnimation(.easeInOut(duration: 0.25)) { insert(shot) }
+            playLanding()
+            return
+        }
+
+        if !cameraInPanel {
+            cameraInPanel = true
+            try? await Task.sleep(for: .milliseconds(30))
+            withAnimation(.spring(duration: 0.5, bounce: 0.35)) { cameraShown = true }
+            try? await Task.sleep(for: .milliseconds(420))
+        }
+
+        withAnimation(.easeOut(duration: 0.06)) { flash = 1 }
+        try? await Task.sleep(for: .milliseconds(70))
+        withAnimation(.easeOut(duration: 0.7)) { flash = 0 }
+
+        eject = 0
+        developBonus = 0
+        developStart = Date().addingTimeInterval(0.25)
+        printing = shot
+        try? await Task.sleep(for: .milliseconds(40))
+        withAnimation(.timingCurve(0.16, 0.84, 0.3, 1, duration: 1.4)) { eject = 1 }
+        try? await Task.sleep(for: .milliseconds(1300))
+        withAnimation(.easeOut(duration: 0.25)) { hintVisible = true }
+
+        let deadline = Date().addingTimeInterval(Self.developDuration + 1)
+        while developProgress(at: .now) < 1, Date() < deadline {
+            if developProgress(at: .now) > 0.8, hintVisible {
+                withAnimation(.easeIn(duration: 0.25)) { hintVisible = false }
+            }
+            try? await Task.sleep(for: .milliseconds(100))
+        }
+        withAnimation(.easeIn(duration: 0.2)) { hintVisible = false }
+        try? await Task.sleep(for: .milliseconds(queue.isEmpty ? 900 : 300))
+
+        withAnimation(.spring(duration: 0.7, bounce: 0.22)) {
+            insert(shot)
+            printing = nil
+        }
+        try? await Task.sleep(for: .milliseconds(380))
+        log.info("Print landed: \(shot.title, privacy: .private); pile has \(self.shots.count)")
+        playLanding()
+        try? await Task.sleep(for: .milliseconds(300))
+    }
+
+    private func insert(_ shot: Shot) {
+        shots.insert(shot, at: 0)
+        if shots.count > Self.maxShots { shots.removeLast(shots.count - Self.maxShots) }
+    }
+
+    private func linger() {
+        lingerTask?.cancel()
+        lingering = true
+        lingerTask = Task {
+            try? await Task.sleep(for: .seconds(6))
+            guard !Task.isCancelled else { return }
+            withAnimation(.easeInOut(duration: 0.3)) { lingering = false }
+        }
+    }
+
+    private func playLanding() {
+        Sounds.landing()
+    }
+
+    // MARK: Pointer
+
+    func pointerHovering(_ inside: Bool) {
+        withAnimation(.easeOut(duration: 0.2)) { pointerInside = inside }
+        if inside {
+            guard !sweeping else { return }
+            collapseTask?.cancel()
+            guard !cameraInPanel, visibleShots.count > 1, !pileExpanded else { return }
+            expandedInPanel = true
+            withAnimation(.spring(duration: 0.45, bounce: 0.28)) { pileExpanded = true }
+            updateHoveredCard()
+        } else {
+            lastPointerX = nil
+            pointer = nil
+            collapse(animated: true)
+        }
+    }
+
+    private func collapse(animated: Bool) {
+        guard pileExpanded || expandedInPanel else { return }
+        collapseTask?.cancel()
+        hoveredShot = nil
+        guard animated else {
+            pileExpanded = false
+            expandedInPanel = false
+            return
+        }
+        withAnimation(.spring(duration: 0.4, bounce: 0.2)) { pileExpanded = false }
+        collapseTask = Task {
+            try? await Task.sleep(for: .milliseconds(420))
+            guard !Task.isCancelled, !pileExpanded else { return }
+            expandedInPanel = false
+        }
+    }
+
+    /// `point` has a top-left origin within a panel of `size`.
+    func pointerMoved(to point: CGPoint, in size: CGSize) {
+        pointer = (corner.isTrailing ? size.width - point.x : point.x, size.height - point.y)
+        updateHoveredCard()
+        shake(x: point.x)
+    }
+
+    private func updateHoveredCard() {
+        var target: Shot.ID?
+        if pileExpanded, let pointer {
+            let items = visibleShots
+            let lifted = items.firstIndex { $0.id == hoveredShot }
+            if let index = Layout.fanCard(inward: pointer.inward, up: pointer.up, count: items.count,
+                                          trailing: corner.isTrailing, lifted: lifted) {
+                target = items[index].id
+            }
+        }
+        guard target != hoveredShot else { return }
+        withAnimation(.spring(duration: 0.25, bounce: 0.3)) { hoveredShot = target }
+    }
+
+    /// Wiggling the pointer over a developing print speeds it up, like shaking a Polaroid.
+    private func shake(x: CGFloat) {
+        defer { lastPointerX = x }
+        guard printing != nil, eject >= 1, let last = lastPointerX else { return }
+        let delta = x - last
+        guard abs(delta) > 0.5 else { return }
+        let direction: CGFloat = delta > 0 ? 1 : -1
+        travel += abs(delta)
+        if direction != lastDirection, travel > 10 {
+            lastDirection = direction
+            travel = 0
+            developBonus += 0.075
+            withAnimation(.spring(duration: 0.18, bounce: 0.5)) { wiggle = Double(direction) * 5 }
+            Task {
+                try? await Task.sleep(for: .milliseconds(120))
+                withAnimation(.spring(duration: 0.35, bounce: 0.55)) { wiggle = 0 }
+            }
+        }
+    }
+
+    // MARK: Actions
+
+    func dragProvider(for shot: Shot) -> NSItemProvider {
+        NSItemProvider(contentsOf: shot.url) ?? NSItemProvider()
+    }
+
+    func open(_ shot: Shot) {
+        NSWorkspace.shared.open(shot.url)
+    }
+
+    func reveal(_ shot: Shot) {
+        NSWorkspace.shared.activateFileViewerSelecting([shot.url])
+    }
+
+    func copy(_ shot: Shot) {
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        if let image = NSImage(contentsOf: shot.url) {
+            pasteboard.writeObjects([image])
+        }
+    }
+
+    func remove(_ shot: Shot) {
+        withAnimation(.spring(duration: 0.4)) { shots.removeAll { $0 === shot } }
+    }
+
+    func trash(_ shot: Shot) {
+        try? FileManager.default.trashItem(at: shot.url, resultingItemURL: nil)
+        remove(shot)
+    }
+
+    /// Flicks every print off the pile, one after another. The files stay where they are.
+    func clearPile() {
+        guard canSweep else { return }
+        sweeping = true
+        undoTask?.cancel()
+        Task {
+            if pileExpanded {
+                collapse(animated: true)
+                try? await Task.sleep(for: .milliseconds(280))
+            }
+            if reduceMotion {
+                withAnimation(.easeOut(duration: 0.3)) { tossed = Set(shots.map(\.id)) }
+                try? await Task.sleep(for: .milliseconds(320))
+            } else {
+                for (index, shot) in visibleShots.enumerated() {
+                    Sounds.swish(index)
+                    withAnimation(.timingCurve(0.55, 0, 0.8, 0.45, duration: 0.5)) { _ = tossed.insert(shot.id) }
+                    try? await Task.sleep(for: .milliseconds(110))
+                }
+                tossed = Set(shots.map(\.id))
+                try? await Task.sleep(for: .milliseconds(380))
+            }
+            Sounds.poof()
+            swept = shots.filter { tossed.contains($0.id) }
+            shots.removeAll { tossed.contains($0.id) }
+            tossed = []
+            log.info("Swept \(self.swept.count) prints off the pile")
+            withAnimation(.spring(duration: 0.4, bounce: 0.35)) { sweptCount = swept.count }
+            sweeping = false
+            offerUndo()
+        }
+    }
+
+    private func offerUndo() {
+        undoTask = Task {
+            try? await Task.sleep(for: .seconds(6))
+            guard !Task.isCancelled else { return }
+            withAnimation(.easeInOut(duration: 0.3)) { sweptCount = 0 }
+            swept = []
+        }
+    }
+
+    func undoClear() {
+        guard !swept.isEmpty else { return }
+        undoTask?.cancel()
+        let restored = swept
+        swept = []
+        withAnimation(.spring(duration: 0.55, bounce: 0.3)) {
+            sweptCount = 0
+            shots = (shots + restored).sorted { $0.date > $1.date }
+        }
+        Sounds.landing()
+    }
+
+    func openFolder() {
+        NSWorkspace.shared.open(folderURL)
+    }
+}
+
+#if DEBUG
+extension DeskModel {
+    func stage(shots: [Shot], printing: Shot?, develop: Double, expanded: Bool, hint: Bool) {
+        self.shots = shots
+        self.printing = printing
+        cameraInPanel = printing != nil
+        cameraShown = printing != nil
+        eject = 1
+        hintVisible = hint
+        developBonus = 0
+        developStart = Date().addingTimeInterval(-develop * Self.developDuration)
+        pileExpanded = expanded
+        expandedInPanel = expanded
+        pointerInside = false
+        tossed = []
+        sweptCount = 0
+    }
+
+    func stageSweep(pointerInside: Bool, tossed count: Int, swept: Int) {
+        self.pointerInside = pointerInside
+        tossed = Set(visibleShots.prefix(count).map(\.id))
+        sweptCount = swept
+    }
+}
+#endif
