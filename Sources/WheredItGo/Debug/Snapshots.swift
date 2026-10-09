@@ -35,8 +35,18 @@ enum Snapshots {
         try write(scene(model, size: CGSize(width: Layout.pileSize.width, height: Layout.pileSize.height + Layout.stationSize.height)),
                   to: folder.appending(path: "1-printing.png"))
 
+        let feedSize = CGSize(width: Layout.pileSize.width, height: Layout.stationSize.height + Layout.pileSize.height)
+        for progress in [0.2, 0.45, 0.7, 0.92] {
+            model.stage(shots: [], printing: shots.first, develop: 0.05, expanded: false, hint: false)
+            model.stageFeed(progress)
+            try write(scene(model, size: feedSize), to: folder.appending(path: "1-feed-\(Int(progress * 100)).png"))
+        }
+
         model.stage(shots: shots, printing: nil, develop: 1, expanded: false, hint: false)
         try write(scene(model, size: Layout.pileSize), to: folder.appending(path: "2-pile.png"))
+        model.stageToast(.copiedText)
+        try write(scene(model, size: Layout.pileSize), to: folder.appending(path: "2-pile-toast.png"))
+        model.stageToast(nil)
 
         model.stage(shots: shots, printing: nil, develop: 1, expanded: true, hint: false)
         try write(scene(model, size: CGSize(width: Layout.fanWidth(count: model.visibleShots.count), height: Layout.fanHeight)),
@@ -72,6 +82,18 @@ enum Snapshots {
 
         try write(AnyView(SettingsView(model: model).background(Color(nsColor: .windowBackgroundColor))),
                   to: folder.appending(path: "5-settings.png"))
+
+        try write(AnyView(MenuContent(model: model, showWelcome: {}, showAbout: {}).background(.regularMaterial)),
+                  to: folder.appending(path: "10-menu-empty.png"))
+        model.stage(shots: shots, printing: nil, develop: 1, expanded: false, hint: false)
+        try write(AnyView(MenuContent(model: model, showWelcome: {}, showAbout: {}).background(.regularMaterial)),
+                  to: folder.appending(path: "10-menu.png"))
+        try write(AnyView(AboutView(model: model, animated: false).background(Color(nsColor: .windowBackgroundColor))),
+                  to: folder.appending(path: "11-about.png"))
+        try write(AnyView(HStack(spacing: 20) {
+            CornerPicker(corner: .constant(.bottomTrailing), count: 6)
+            CornerPicker(corner: .constant(.bottomLeading), count: 3)
+        }.padding(20).background(Color(nsColor: .windowBackgroundColor))), to: folder.appending(path: "12-corner-picker.png"))
     }
 
     private static func scene(_ model: DeskModel, size: CGSize) -> AnyView {

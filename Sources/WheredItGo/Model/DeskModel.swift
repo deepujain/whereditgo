@@ -11,6 +11,24 @@ struct PanelLayout: Equatable {
     var corner: Corner
 }
 
+enum Toast: Equatable {
+    case copiedImage, copiedText
+
+    var title: LocalizedStringKey {
+        switch self {
+        case .copiedImage: "Picture copied"
+        case .copiedText: "Text copied"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .copiedImage: "photo.on.rectangle"
+        case .copiedText: "text.viewfinder"
+        }
+    }
+}
+
 @MainActor
 @Observable
 final class DeskModel {
@@ -27,6 +45,11 @@ final class DeskModel {
     var cameraShown = false
     var flash = 0.0
     var eject = 0.0
+    /// Extra bend while a print slaps flat after leaving the slot.
+    var flop = 0.0
+    private(set) var motorRunning = false
+    /// A brief confirmation shown under the pile, like “Copied”.
+    private(set) var toast: Toast?
     var wiggle = 0.0
     var hintVisible = false
     var pileExpanded = false
@@ -52,6 +75,7 @@ final class DeskModel {
     @ObservationIgnored private var lingerTask: Task<Void, Never>?
     @ObservationIgnored private var collapseTask: Task<Void, Never>?
     @ObservationIgnored private var undoTask: Task<Void, Never>?
+    @ObservationIgnored private var toastTask: Task<Void, Never>?
     @ObservationIgnored private var swept: [Shot] = []
     @ObservationIgnored private var lastPointerX: CGFloat?
     @ObservationIgnored private var pointer: (inward: CGFloat, up: CGFloat)?
@@ -61,7 +85,8 @@ final class DeskModel {
     @ObservationIgnored private let defaults = UserDefaults.standard
     @ObservationIgnored private let log = Logger(subsystem: "app.whereditgo.mac", category: "desk")
 
-    static let developDuration = 1.6
+    static let developDuration = 1.8
+    static let feedDuration = 0.85
     static let maxShots = 40
 
     var visibleShots: [Shot] { Array(shots.prefix(pileSize)) }
@@ -159,7 +184,7 @@ final class DeskModel {
         }
         let shot = Shot(url: url, date: found.created, app: Self.frontmostAppName())
         log.info("New screenshot \(url.lastPathComponent, privacy: .private) from \(shot.app ?? "unknown", privacy: .public)")
-        if defaults.bool(forKey: Prefs.copyToClipboard) { copy(shot) }
+        if defaults.bool(forKey: Prefs.copyToClipboard) { copy(shot, announce: false) }
         arrivals += 1
         Task {
             // The picture is ready before the camera fires, so the print never comes out blank.
@@ -241,18 +266,26 @@ final class DeskModel {
             try? await Task.sleep(for: .milliseconds(170))
         }
 
+        Sounds.shutter()
         withAnimation(.easeOut(duration: 0.05)) { flash = 1 }
         try? await Task.sleep(for: .milliseconds(50))
         withAnimation(.easeOut(duration: 0.5)) { flash = 0 }
 
         eject = 0
+        flop = 0
         developBonus = 0
         developStart = Date().addingTimeInterval(0.1)
         printing = shot
         try? await Task.sleep(for: .milliseconds(16))
-        withAnimation(.timingCurve(0.16, 0.84, 0.3, 1, duration: 0.75)) { eject = 1 }
-        try? await Task.sleep(for: .milliseconds(650))
-        if developProgress(at: .now) < 0.5 {
+        motorRunning = true
+        Sounds.motor()
+        withAnimation(.timingCurve(0.3, 0.1, 0.45, 1, duration: Self.feedDuration)) { eject = 1 }
+        try? await Task.sleep(for: .seconds(Self.feedDuration))
+        motorRunning = false
+        withAnimation(.easeIn(duration: 0.08)) { flop = -10 }
+        try? await Task.sleep(for: .milliseconds(80))
+        withAnimation(.spring(duration: 0.5, bounce: 0.55)) { flop = 0 }
+        if developProgress(at: .now) < 0.6 {
             withAnimation(.easeOut(duration: 0.2)) { hintVisible = true }
         }
 
@@ -402,18 +435,32 @@ final class DeskModel {
         NSWorkspace.shared.activateFileViewerSelecting([shot.url])
     }
 
-    func copy(_ shot: Shot) {
+    /// Copies the picture. Pass `announce: false` for automatic copies nobody asked for.
+    func copy(_ shot: Shot, announce: Bool = true) {
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
         if let image = NSImage(contentsOf: shot.url) {
             pasteboard.writeObjects([image])
         }
+        if announce { show(.copiedImage) }
     }
 
     func copyText(_ shot: Shot) {
         guard let text = shot.text, !text.isEmpty else { return }
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(text, forType: .string)
+        show(.copiedText)
+    }
+
+    private func show(_ toast: Toast) {
+        Sounds.copied()
+        toastTask?.cancel()
+        withAnimation(.spring(duration: 0.35, bounce: 0.4)) { self.toast = toast }
+        toastTask = Task {
+            try? await Task.sleep(for: .seconds(1.6))
+            guard !Task.isCancelled else { return }
+            withAnimation(.easeInOut(duration: 0.3)) { self.toast = nil }
+        }
     }
 
     func remove(_ shot: Shot) {
@@ -505,6 +552,16 @@ extension DeskModel {
     func stageHover(index: Int, sheen: Double) {
         hoveredShot = visibleShots[index].id
         self.sheen = sheen
+    }
+
+    func stageFeed(_ progress: Double) {
+        eject = progress
+        motorRunning = progress < 1
+        hintVisible = false
+    }
+
+    func stageToast(_ toast: Toast?) {
+        self.toast = toast
     }
 
     func stageSweep(pointerInside: Bool, tossed count: Int, swept: Int) {

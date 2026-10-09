@@ -93,12 +93,13 @@ struct WelcomeView: View {
 
     private var hero: some View {
         ZStack(alignment: .top) {
-            PolaroidView(shot: sample)
-                .rotationEffect(.degrees(6))
-                .offset(x: 6, y: 112)
             CameraView()
+            PolaroidView(shot: sample)
+                .feedingFromSlot(0.8)
+                .rotationEffect(.degrees(2), anchor: .top)
+                .padding(.top, CameraView.slotCenter)
         }
-        .frame(width: 200, height: 250, alignment: .top)
+        .frame(width: 200, height: 262, alignment: .top)
         .padding(.top, 6)
     }
 

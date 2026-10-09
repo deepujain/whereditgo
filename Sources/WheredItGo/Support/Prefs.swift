@@ -72,7 +72,7 @@ enum Layout {
     }
 
     /// The camera lens centre, measured inward from the panel's screen edge and down from its top.
-    static let lensInset = CGSize(width: 90, height: 74)
+    static let lensInset = CGSize(width: CameraView.lensCenter.x, height: cameraTop + CameraView.lensCenter.y)
 
     /// Index of the topmost fanned card under a point measured inward from the pile's
     /// screen edge and up from the bottom of the panel.
@@ -94,7 +94,8 @@ enum Layout {
     }
 
     static let stationSize = CGSize(width: 180, height: 296)
-    static let slotY: CGFloat = 124
+    static let cameraTop: CGFloat = 8
+    static let slotY: CGFloat = cameraTop + CameraView.slotCenter
 
     static let screenMargin: CGFloat = 10
 }

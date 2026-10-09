@@ -27,27 +27,10 @@ struct PrintStation: View {
 
     var body: some View {
         ZStack(alignment: .top) {
-            if let shot = model.printing {
-                TimelineView(.animation) { context in
-                    PolaroidView(shot: shot, develop: model.developProgress(at: context.date))
-                }
-                .matchedGeometryEffect(id: shot.id, in: namespace)
-                .rotationEffect(.degrees(model.wiggle), anchor: .top)
-                .offset(y: (model.eject - 1) * Layout.cardHeight)
-                .frame(width: Layout.cardWidth, height: Layout.cardHeight, alignment: .top)
-                .mask(alignment: .top) {
-                    // Hides the part of the print still inside the camera; lifts once it is fully out.
-                    Rectangle()
-                        .frame(width: Layout.cardWidth * 2, height: Layout.cardHeight * (model.eject < 1 ? 1 : 3))
-                        .offset(y: model.eject < 1 ? 0 : -Layout.cardHeight)
-                }
-                .padding(.top, Layout.slotY)
-                .onDrag { model.dragProvider(for: shot) }
-                .help(Text("Wiggle the pointer to develop faster, or drag it out right away."))
-            }
-
-            TimelineView(.animation(minimumInterval: 1 / 30, paused: !model.cameraShown || reduceMotion)) { _ in
+            TimelineView(.animation(minimumInterval: 1 / 30, paused: !model.cameraShown || reduceMotion)) { context in
+                let t = context.date.timeIntervalSinceReferenceDate
                 CameraView(flash: model.flash, gaze: reduceMotion ? .zero : model.lensGaze())
+                    .offset(x: model.motorRunning ? sin(t * 251) * 0.5 : 0, y: model.motorRunning ? cos(t * 317) * 0.35 : 0)
             }
                 .scaleEffect(x: model.cameraHop ? 1.03 : 1, y: model.cameraHop ? 0.96 : 1, anchor: .bottom)
                 .offset(y: model.cameraHop ? -6 : 0)
@@ -55,7 +38,20 @@ struct PrintStation: View {
                 .rotationEffect(.degrees(model.flash * -2.5), anchor: .bottom)
                 .offset(y: (model.cameraShown ? 0 : 50) - model.flash * 3)
                 .opacity(model.cameraShown ? 1 : 0)
-                .padding(.top, 8)
+                .padding(.top, Layout.cameraTop)
+
+            // Drawn over the camera so the print slides out in front of the slot's lower lip.
+            if let shot = model.printing {
+                TimelineView(.animation) { context in
+                    PolaroidView(shot: shot, develop: model.developProgress(at: context.date))
+                }
+                .matchedGeometryEffect(id: shot.id, in: namespace)
+                .rotationEffect(.degrees(model.wiggle), anchor: .top)
+                .feedingFromSlot(model.eject, flop: model.flop)
+                .padding(.top, Layout.slotY)
+                .onDrag { model.dragProvider(for: shot) }
+                .help(Text("Wiggle the pointer to develop faster, or drag it out right away."))
+            }
 
             if model.hintVisible {
                 Label("Wiggle to develop", systemImage: "hand.wave.fill")
@@ -101,7 +97,20 @@ struct PileView: View {
 
     @ViewBuilder
     private func footer(hasItems: Bool) -> some View {
-        if model.sweptCount > 0 {
+        if let toast = model.toast {
+            Label(toast.title, systemImage: toast.symbol)
+                .symbolEffect(.bounce, value: toast)
+                .foregroundStyle(.primary)
+                .pill()
+                .overlay(alignment: .topTrailing) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(.white, .green)
+                        .offset(x: 5, y: -5)
+                }
+                .transition(.scale(scale: 0.6).combined(with: .opacity))
+                .accessibilityAddTraits(.updatesFrequently)
+        } else if model.sweptCount > 0 {
             Button(action: model.undoClear) {
                 HStack(spacing: 6) {
                     Image(systemName: "wind")
@@ -139,6 +148,51 @@ struct PileView: View {
             }
             .transition(.opacity)
         }
+    }
+}
+
+/// Quick actions that float over the lifted print, so nothing needs a right-click.
+private struct CardActions: View {
+    let shot: Shot
+    let model: DeskModel
+
+    var body: some View {
+        HStack(spacing: 0) {
+            action("doc.on.doc", "Copy Picture") { model.copy(shot) }
+            action("text.viewfinder", "Copy Text") { model.copyText(shot) }
+                .disabled(shot.text?.isEmpty ?? true)
+            action("arrow.up.forward.app", "Open") { model.open(shot) }
+            action("folder", "Show in Finder") { model.reveal(shot) }
+        }
+        .padding(2)
+        .background(.ultraThinMaterial, in: Capsule())
+        .overlay(Capsule().strokeBorder(.white.opacity(0.3), lineWidth: 0.5))
+        .environment(\.colorScheme, .dark)
+        .shadow(color: .black.opacity(0.3), radius: 6, y: 3)
+    }
+
+    private func action(_ symbol: String, _ title: LocalizedStringKey, perform: @escaping () -> Void) -> some View {
+        Button(action: perform) {
+            Image(systemName: symbol)
+                .font(.system(size: 11, weight: .semibold))
+                .frame(width: 26, height: 22)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(CardActionStyle())
+        .help(Text(title))
+        .accessibilityLabel(Text(title))
+    }
+}
+
+private struct CardActionStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .foregroundStyle(.white.opacity(isEnabled ? 0.95 : 0.35))
+            .background(.white.opacity(configuration.isPressed ? 0.22 : 0), in: Capsule())
+            .scaleEffect(configuration.isPressed ? 0.88 : 1)
+            .animation(.spring(duration: 0.2, bounce: 0.5), value: configuration.isPressed)
     }
 }
 
@@ -186,6 +240,13 @@ struct PileCard: View {
         let toss = model.tossed.contains(shot.id) && !reduceMotion
         let featured = hovering && expanded
         PolaroidView(shot: shot, lifted: featured, sheen: featured ? model.sheen : nil)
+            .overlay(alignment: .top) {
+                if featured, !model.sweeping {
+                    CardActions(shot: shot, model: model)
+                        .padding(.top, Layout.cardInset + Layout.photoHeight - 32)
+                        .transition(.scale(scale: 0.7, anchor: .bottom).combined(with: .opacity))
+                }
+            }
             .rotation3DEffect(.degrees(featured && !reduceMotion ? (model.sheen - 0.5) * 16 : 0),
                               axis: (x: 0, y: 1, z: 0), perspective: 0.5)
             .matchedGeometryEffect(id: shot.id, in: namespace)

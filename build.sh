@@ -23,6 +23,8 @@ else
   cp "$BIN" "$APP/Contents/MacOS/WheredItGo"
 fi
 cp Resources/Info.plist "$APP/Contents/Info.plist"
+cp Resources/Camera.png "$APP/Contents/Resources/Camera.png"
+cp Resources/Camera.png build/bin/Camera.png
 
 "$BIN" --render-icon build/AppIcon.iconset
 iconutil -c icns build/AppIcon.iconset -o "$APP/Contents/Resources/AppIcon.icns"

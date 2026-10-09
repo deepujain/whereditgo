@@ -42,6 +42,7 @@ struct WheredItGoApp: App {
             Image(systemName: "photo.stack")
                 .accessibilityLabel(Text("Where’d It Go?"))
         }
+        .menuBarExtraStyle(.window)
 
         Settings {
             SettingsView(model: appDelegate.model)
@@ -54,6 +55,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let model = DeskModel()
     private var panel: DeskPanelController?
     private var welcomeWindow: NSWindow?
+    private var aboutWindow: NSWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -85,21 +87,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func showAbout() {
-        let body = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
-        let centered = NSMutableParagraphStyle()
-        centered.alignment = .center
-        centered.paragraphSpacing = 4
-        let plain: [NSAttributedString.Key: Any] = [.font: body, .foregroundColor: NSColor.secondaryLabelColor, .paragraphStyle: centered]
-
-        let credits = NSMutableAttributedString(string: String(localized: "Every screenshot, printed into a little pile.\n"), attributes: plain)
-        credits.append(NSAttributedString(string: String(localized: "Made by "), attributes: plain))
-        credits.append(NSAttributedString(string: "1xAI\n", attributes: plain.merging([.font: NSFont.boldSystemFont(ofSize: body.pointSize),
-                                                                                        .foregroundColor: NSColor.labelColor]) { $1 }))
-        credits.append(NSAttributedString(string: AppLinks.websiteLabel,
-                                          attributes: plain.merging([.link: AppLinks.website]) { $1 }))
-
+        // A fresh window each time, so the camera prints the credits again.
+        aboutWindow?.close()
+        let window = NSWindow(contentRect: .zero, styleMask: [.titled, .closable, .fullSizeContentView],
+                              backing: .buffered, defer: false)
+        window.titlebarAppearsTransparent = true
+        window.titleVisibility = .hidden
+        window.isMovableByWindowBackground = true
+        window.isReleasedWhenClosed = false
+        window.title = String(localized: "About Where’d It Go?")
+        window.contentView = NSHostingView(rootView: AboutView(model: model))
+        window.center()
+        aboutWindow = window
         NSApp.activate()
-        NSApp.orderFrontStandardAboutPanel(options: [.credits: credits])
+        window.makeKeyAndOrderFront(nil)
     }
 }
 
