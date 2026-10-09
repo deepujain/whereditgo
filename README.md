@@ -28,24 +28,37 @@ You take a screenshot, the little preview vanishes before you can drag it anywhe
 
 ## Features
 
-- **Instant prints.** Every new screenshot comes out of the camera and develops in a few seconds. Wiggle the pointer over it to develop faster, like shaking a Polaroid.
+- **Prints like real instant film.** Every new screenshot feeds out of the camera’s slot, curling toward you as it sags under its own weight, then drops flat and develops. Wiggle the pointer over it to develop faster, like shaking a Polaroid.
 - **A camera with a little personality.** While it prints, the lens follows your pointer around the screen, and it gives a happy hop when a print lands.
 - **A pile you can fan out.** Hover the pile and it spreads into a hand of cards, newest first. The card under your pointer lifts, tilts toward you, and catches a foil-like shine as you move across it.
-- **Drag into anything.** Drag a print into any app. Double-click to open it. Right-click to copy the image, copy its text, show it in Finder, remove it from the pile, or move it to the Trash.
-- **Handwritten captions.** On-device text recognition picks the most prominent words in each screenshot, so you can tell them apart at a glance. Nothing leaves your Mac.
-- **Your day at a glance.** The menu bar lists today’s prints grouped into morning, afternoon, and evening.
+- **Quick actions.** The lifted print shows buttons to copy the picture, copy its text, open it, or show it in Finder. Drag a print into any app, double-click to open it, or right-click to remove it or move it to the Trash.
+- **Handwritten captions and Copy Text.** On-device text recognition captions each print with its most prominent words and lets you copy all the text in it. Nothing leaves your Mac.
+- **Your day in the menu bar.** The menu bar panel shows today’s prints as a contact sheet grouped into morning, afternoon, and evening. Click a print to open it or drag it out. Round switches turn on instant prints, auto copy, Desktop tidying, sounds, and keeping the pile on screen.
 - **Sweep it away.** Hover the pile and click **Sweep** to flick every print off with a swish and a poof. Changed your mind? **Undo** puts them back. Your files are never touched.
+- **Pick your corner.** In Settings, click a corner of a tiny Mac screen to send the pile there.
 - **Respects your setup.** Follows the screenshot location you chose in the Screenshot app and supports launch at login. With Reduce Motion on, prints fade instead of flying. VoiceOver reads each print’s caption and the text inside it.
 - **Optional tidying.** Copy each screenshot to the clipboard, or move screenshots off your Desktop into `Pictures/Where’d It Go/<date>`.
 
 <p align="center">
-  <img src="docs/images/3-fan.png" width="760" alt="The pile fanned out on hover">
+  <img src="docs/images/3-fan-holo.png" width="760" alt="The pile fanned out, with quick actions on the lifted print">
 </p>
 
 <p align="center">
-  <img src="docs/images/6-sweep-button.png" width="240" alt="The Sweep button under the pile">
+  <img src="docs/images/10-menu.png" width="344" alt="The menu bar panel with today’s prints and quick switches">
   &nbsp;&nbsp;
-  <img src="docs/images/8-undo.png" width="240" alt="Undo after sweeping">
+  <img src="docs/images/11-about.png" width="250" alt="The About window, where the camera prints its own credits">
+</p>
+
+<p align="center">
+  <img src="docs/images/2-pile-toast.png" width="220" alt="Text copied confirmation under the pile">
+  &nbsp;&nbsp;
+  <img src="docs/images/6-sweep-button.png" width="220" alt="The Sweep button under the pile">
+  &nbsp;&nbsp;
+  <img src="docs/images/8-undo.png" width="220" alt="Undo after sweeping">
+</p>
+
+<p align="center">
+  <img src="docs/images/12-corner-picker.png" width="430" alt="Choosing the pile’s corner in Settings">
 </p>
 
 ## Install
@@ -86,7 +99,7 @@ Sources/WheredItGo/
   Views/     Camera, Polaroid, pile, menu, settings, and welcome views
   Support/   Preferences, screenshot folder helpers, and sounds
   Debug/     Debug-only snapshot renderer for reviewing the UI
-Resources/   Info.plist
+Resources/   Info.plist and the camera photo
 build.sh     Builds and signs the .app
 package.sh   Builds the downloadable zip
 ```

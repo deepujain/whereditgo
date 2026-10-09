@@ -35,6 +35,11 @@ enum Snapshots {
         try write(scene(model, size: CGSize(width: Layout.pileSize.width, height: Layout.pileSize.height + Layout.stationSize.height)),
                   to: folder.appending(path: "1-printing.png"))
 
+        model.stage(shots: Array(shots.dropFirst()), printing: shots.first, develop: 0, expanded: false, hint: false)
+        model.stageFeed(0.85)
+        try write(scene(model, size: CGSize(width: Layout.pileSize.width, height: Layout.pileSize.height + Layout.stationSize.height)),
+                  to: folder.appending(path: "1-printing-feed.png"))
+
         let feedSize = CGSize(width: Layout.pileSize.width, height: Layout.stationSize.height + Layout.pileSize.height)
         for progress in [0.15, 0.35, 0.55, 0.75, 0.95] {
             model.stage(shots: [], printing: shots.first, develop: 0.05, expanded: false, hint: false)
