@@ -21,12 +21,12 @@ enum Sounds {
 
     /// A soft hush of paper sliding through the rollers.
     static func motor() {
-        play(feedSound, volume: 0.22)
+        play(feedSound, volume: 0.08)
     }
 
     static func landing() {
         guard enabled else { return }
-        play(NSSound(named: "Pop"), volume: 0.25)
+        play(NSSound(named: "Pop"), volume: 0.15)
         NSHapticFeedbackManager.defaultPerformer.perform(.levelChange, performanceTime: .now)
     }
 
@@ -61,13 +61,11 @@ private enum Synth {
         var noise = Noise()
         var low = 0.0, lower = 0.0
         return clip(seconds: length) { t in
-            let envelope = min(1, t / 0.25) * min(1, max(0, length - t) / 0.35)
-            let white = noise.next()
-            low += 0.18 * (white - low)
-            lower += 0.03 * (low - lower)
-            let band = low - lower
-            let texture = 0.85 + 0.15 * sin(2 * .pi * 7 * t)
-            return band * texture * envelope * 1.6
+            let fadeIn = min(1, t / 0.5), fadeOut = min(1, max(0, length - t) / 0.7)
+            let envelope = fadeIn * fadeIn * fadeOut * fadeOut
+            low += 0.06 * (noise.next() - low)
+            lower += 0.012 * (low - lower)
+            return (low - lower) * envelope * 2.2
         }
     }
 
