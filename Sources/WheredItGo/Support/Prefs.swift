@@ -50,6 +50,8 @@ enum Layout {
     static let edgeInset: CGFloat = 24
     static let badgeHeight: CGFloat = 26
     static let pileSize = CGSize(width: 220, height: 252)
+    /// Just the count pill, once the pile has tucked away.
+    static let tuckedSize = CGSize(width: cardWidth + edgeInset * 2, height: badgeHeight + 12)
 
     static let fanStep: CGFloat = 96
     static let fanHeight: CGFloat = 300

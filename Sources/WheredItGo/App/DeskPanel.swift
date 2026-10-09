@@ -97,7 +97,7 @@ final class DeskPanelController {
         let area = screen.visibleFrame
         var size = layout.expanded
             ? CGSize(width: Layout.fanWidth(count: layout.count), height: Layout.fanHeight)
-            : Layout.pileSize
+            : layout.tucked ? Layout.tuckedSize : Layout.pileSize
         if layout.camera {
             size.width = max(size.width, Layout.pileSize.width)
             size.height = Layout.pileSize.height + Layout.stationSize.height

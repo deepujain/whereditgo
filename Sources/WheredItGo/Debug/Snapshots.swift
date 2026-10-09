@@ -63,6 +63,9 @@ enum Snapshots {
 
         model.stage(shots: shots, printing: nil, develop: 1, expanded: false, hint: false)
         try write(scene(model, size: Layout.pileSize), to: folder.appending(path: "2-pile.png"))
+        model.stageTucked(true)
+        try write(scene(model, size: Layout.tuckedSize), to: folder.appending(path: "2-pile-tucked.png"))
+        model.stageTucked(false)
         model.stageToast(.copiedText)
         try write(scene(model, size: Layout.pileSize), to: folder.appending(path: "2-pile-toast.png"))
         model.stageToast(nil)

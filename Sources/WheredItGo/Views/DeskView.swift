@@ -14,7 +14,8 @@ struct DeskView: View {
                     .padding(model.corner.edge, Layout.edgeInset + (Layout.cardWidth - Layout.stationSize.width) / 2)
             }
             PileView(model: model, namespace: namespace)
-                .frame(height: model.expandedInPanel ? Layout.fanHeight : Layout.pileSize.height)
+                .frame(height: model.expandedInPanel ? Layout.fanHeight
+                    : model.panelLayout.tucked ? Layout.tuckedSize.height : Layout.pileSize.height)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: model.corner.alignment)
     }
@@ -81,12 +82,19 @@ struct PileView: View {
         let items = model.visibleShots
         let trailing = model.corner.isTrailing
         ZStack(alignment: model.corner.alignment) {
-            ForEach(Array(items.enumerated()), id: \.element.id) { index, shot in
-                PileCard(shot: shot, model: model, namespace: namespace, index: index,
-                         expanded: model.pileExpanded, trailing: trailing)
-                    .zIndex(model.hoveredShot == shot.id && model.pileExpanded ? 100 : Double(items.count - index))
+            // Once the panel has shrunk to the count pill, the hidden cards must not take up room.
+            if !model.panelLayout.tucked {
+                ForEach(Array(items.enumerated()), id: \.element.id) { index, shot in
+                    PileCard(shot: shot, model: model, namespace: namespace, index: index,
+                             expanded: model.pileExpanded, trailing: trailing)
+                        .zIndex(model.hoveredShot == shot.id && model.pileExpanded ? 100 : Double(items.count - index))
+                }
             }
         }
+        .scaleEffect(model.tucked ? 0.35 : 1, anchor: model.corner.isTrailing ? .bottomTrailing : .bottomLeading)
+        .offset(y: model.tucked ? 30 : 0)
+        .opacity(model.tucked ? 0 : 1)
+        .allowsHitTesting(!model.tucked)
         .padding(model.corner.edge, Layout.edgeInset)
         .padding(.bottom, Layout.pileBottomInset)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: model.corner.alignment)
@@ -137,6 +145,7 @@ struct PileView: View {
                 .foregroundStyle(.secondary)
                 .pill()
                 .accessibilityLabel(Text("\(model.todayCount) screenshots today"))
+                .accessibilityAction(named: Text("Show Pile")) { model.showPile() }
 
                 if model.pointerInside, model.canSweep {
                     Button(action: model.clearPile) {

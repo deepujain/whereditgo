@@ -7,6 +7,7 @@ struct PanelLayout: Equatable {
     var visible: Bool
     var camera: Bool
     var expanded: Bool
+    var tucked: Bool
     var count: Int
     var corner: Corner
 }
@@ -66,6 +67,10 @@ final class DeskModel {
     @ObservationIgnored var panelFrame = CGRect.zero
     private var showPileAlways = true
     private var lingering = false
+    /// The pile has tucked away, leaving only its count in the corner.
+    private(set) var tucked = false
+    private var tuckedInPanel = false
+    @ObservationIgnored private var tuckTask: Task<Void, Never>?
 
     @ObservationIgnored private var developStart = Date.distantFuture
     @ObservationIgnored private var developBonus = 0.0
@@ -100,6 +105,7 @@ final class DeskModel {
 
     var panelLayout: PanelLayout {
         PanelLayout(visible: isVisible, camera: cameraInPanel, expanded: expandedInPanel,
+                    tucked: tuckedInPanel && !cameraInPanel && !expandedInPanel && sweptCount == 0,
                     count: visibleShots.count, corner: corner)
     }
 
@@ -168,6 +174,7 @@ final class DeskModel {
                 .prefix(Self.maxShots)
                 .map { Shot(url: $0.url, date: $0.created, app: nil) }
             shots.forEach(load)
+            scheduleTuck()
             return
         }
 
@@ -240,6 +247,7 @@ final class DeskModel {
 
     private func drainQueue() async {
         presenting = true
+        untuck()
         collapse(animated: false)
         while !queue.isEmpty {
             await runPrint(queue.removeFirst())
@@ -323,11 +331,38 @@ final class DeskModel {
     private func linger() {
         lingerTask?.cancel()
         lingering = true
+        scheduleTuck()
         lingerTask = Task {
             try? await Task.sleep(for: .seconds(6))
             guard !Task.isCancelled else { return }
             withAnimation(.easeInOut(duration: 0.3)) { lingering = false }
         }
+    }
+
+    /// After a quiet spell, folds the pile down to its count so it stops covering the screen.
+    private func scheduleTuck(after delay: Duration = .seconds(6)) {
+        tuckTask?.cancel()
+        tuckTask = Task {
+            try? await Task.sleep(for: delay)
+            guard !Task.isCancelled, !pointerInside, !presenting, !cameraInPanel, !sweeping, sweptCount == 0,
+                  !pileExpanded, !shots.isEmpty else { return }
+            withAnimation(.spring(duration: 0.45, bounce: 0.15)) { tucked = true }
+            try? await Task.sleep(for: .milliseconds(450))
+            guard !Task.isCancelled, tucked else { return }
+            tuckedInPanel = true
+        }
+    }
+
+    private func untuck() {
+        tuckTask?.cancel()
+        guard tucked || tuckedInPanel else { return }
+        tuckedInPanel = false
+        withAnimation(.spring(duration: 0.45, bounce: 0.3)) { tucked = false }
+    }
+
+    func showPile() {
+        untuck()
+        scheduleTuck()
     }
 
     private func playLanding() {
@@ -339,6 +374,7 @@ final class DeskModel {
     func pointerHovering(_ inside: Bool) {
         withAnimation(.easeOut(duration: 0.2)) { pointerInside = inside }
         if inside {
+            untuck()
             guard !sweeping else { return }
             collapseTask?.cancel()
             guard !cameraInPanel, visibleShots.count > 1, !pileExpanded else { return }
@@ -349,6 +385,7 @@ final class DeskModel {
             lastPointerX = nil
             pointer = nil
             collapse(animated: true)
+            scheduleTuck(after: .seconds(3))
         }
     }
 
@@ -527,6 +564,7 @@ final class DeskModel {
             shots = (shots + restored).sorted { $0.date > $1.date }
         }
         Sounds.landing()
+        showPile()
     }
 
     func openFolder() {
@@ -548,6 +586,8 @@ extension DeskModel {
         pileExpanded = expanded
         expandedInPanel = expanded
         pointerInside = false
+        tucked = false
+        tuckedInPanel = false
         tossed = []
         sweptCount = 0
     }
@@ -563,6 +603,11 @@ extension DeskModel {
         feedSheet = printing.flatMap(PrintSheet.render)
         motorRunning = progress < 1
         hintVisible = false
+    }
+
+    func stageTucked(_ tucked: Bool) {
+        self.tucked = tucked
+        tuckedInPanel = tucked
     }
 
     func stageToast(_ toast: Toast?) {
