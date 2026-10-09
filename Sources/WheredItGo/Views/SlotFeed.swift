@@ -1,3 +1,4 @@
+import CoreImage.CIFilterBuiltins
 import SwiftUI
 
 /// The part of a print that has left the camera slot, drawn as a flexible sheet: it leaves the slot
@@ -18,10 +19,11 @@ struct CurlingPrint: View, Animatable {
     var body: some View {
         let length = Layout.cardHeight * min(1, max(0, progress))
         let slices = Self.slices(length: length, relax: relax)
+        let page = PageCurl.image(sheet, amount: Self.curl(progress: progress, relax: relax))
         ZStack(alignment: .top) {
             ForEach(slices.indices, id: \.self) { index in
                 let slice = slices[index]
-                Image(nsImage: sheet)
+                Image(nsImage: page)
                     .resizable()
                     .frame(width: Layout.cardWidth, height: Layout.cardHeight)
                     .offset(y: -(Layout.cardHeight - length + slice.start))
@@ -75,6 +77,13 @@ struct CurlingPrint: View, Animatable {
         return result
     }
 
+    /// How far the leading corner has turned over: it lifts as soon as it clears the slot, holds its
+    /// set while the rollers feed, and springs flat with the rest of the sheet.
+    private static func curl(progress: Double, relax: Double) -> Double {
+        let lift = min(1, max(0, progress / 0.6))
+        return 0.28 * lift * lift * (3 - 2 * lift) * max(0, 1 - relax)
+    }
+
     /// Stiff paper held at the slot sags like a cantilever under its own weight:
     /// the bend at each point grows with the cube of how much paper hangs beyond it.
     private static func angle(at s: CGFloat, length: CGFloat) -> CGFloat {
@@ -82,6 +91,47 @@ struct CurlingPrint: View, Animatable {
         let sag = 3 * (exitAngle + 0.12) / (full * full * full)
         let hanging = pow(length, 3) - pow(length - s, 3)
         return max(-0.12, exitAngle - sag * hanging / 3)
+    }
+}
+
+/// Turns a print's bottom-right corner over like a page in a book, with the shading and cast shadow
+/// of Core Image's page curl, and the paper's back showing on the fold.
+@MainActor
+enum PageCurl {
+    private static let context = CIContext(options: [.cacheIntermediates: false])
+    private static let back = CIImage(color: CIColor(red: 0.86, green: 0.845, blue: 0.82))
+    /// Bottom-right in Core Image's y-up space, turning up toward the photo.
+    private static let angle: Float = 2.2
+    private static let radius: CGFloat = 14
+    private static var last: (sheet: NSImage, amount: Double, image: NSImage)?
+
+    static func image(_ sheet: NSImage, amount: Double) -> NSImage {
+        let amount = (amount * 400).rounded() / 400
+        guard amount > 0 else { return sheet }
+        if let last, last.sheet === sheet, last.amount == amount { return last.image }
+        guard let cgImage = sheet.cgImage(forProposedRect: nil, context: nil, hints: nil) else { return sheet }
+        let source = CIImage(cgImage: cgImage)
+        let scale = CGFloat(cgImage.width) / sheet.size.width
+        let filter = CIFilter.pageCurlWithShadowTransition()
+        filter.inputImage = source
+        filter.targetImage = CIImage.empty().cropped(to: source.extent)
+        filter.backsideImage = back.cropped(to: source.extent)
+        filter.extent = source.extent
+        filter.time = Float(amount)
+        filter.angle = angle
+        filter.radius = Float(radius * scale)
+        filter.shadowSize = 0.5
+        filter.shadowAmount = 0.6
+        // The fold always lands on the print, so keep only what falls on it: the cast shadow on the
+        // transparent background would show the seams between the sheet's slices.
+        let clip = CIFilter.sourceInCompositing()
+        clip.inputImage = filter.outputImage
+        clip.backgroundImage = source
+        guard let output = clip.outputImage?.cropped(to: source.extent),
+              let curled = context.createCGImage(output, from: source.extent) else { return sheet }
+        let image = NSImage(cgImage: curled, size: sheet.size)
+        last = (sheet, amount, image)
+        return image
     }
 }
 
