@@ -17,6 +17,9 @@ struct MenuContent: View {
         nonmutating set { instantState.wrappedValue = newValue }
     }
 
+    /// Room for two time-of-day rows of prints, or two rows under one heading; more scrolls.
+    private static let sheetHeight: CGFloat = 212
+
     private var today: [Shot] {
         model.shots.filter { Calendar.current.isDateInToday($0.date) }
     }
@@ -28,9 +31,19 @@ struct MenuContent: View {
                 .padding(.top, 14)
                 .padding(.bottom, 10)
 
+            // A fixed height: the menu bar window keeps the size it first opened at, so content that grows gets cropped.
             Group {
-                if today.isEmpty { emptyState } else { contactSheet }
+                if today.isEmpty {
+                    emptyState
+                } else {
+                    ScrollView { contactSheet }
+                        .scrollIndicators(.automatic)
+                }
             }
+            .frame(maxWidth: .infinity)
+            .frame(height: Self.sheetHeight)
+            .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             .padding(.horizontal, 12)
 
             switches
@@ -106,7 +119,6 @@ struct MenuContent: View {
         }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 
     private var emptyState: some View {
@@ -119,9 +131,7 @@ struct MenuContent: View {
                 Shortcut(keys: "⇧⌘5", title: "More options")
             }
         }
-        .padding(.vertical, 16)
-        .frame(maxWidth: .infinity)
-        .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     // MARK: Switches
