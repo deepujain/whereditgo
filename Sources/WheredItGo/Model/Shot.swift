@@ -12,6 +12,8 @@ final class Shot: Identifiable {
     let app: String?
     var title: String
     var image: NSImage?
+    /// Every line of text Vision found, top to bottom.
+    var text: String?
     let tilt: Double
     let nudge: CGSize
 
@@ -34,6 +36,37 @@ final class Shot: Identifiable {
     var accessibilityLabel: String {
         String(localized: "Screenshot: \(title), \(subtitle)")
     }
+
+    /// The first few lines of recognized text, so VoiceOver can say what’s in the picture.
+    var accessibilityText: String? {
+        guard let text, !text.isEmpty else { return nil }
+        let preview = text.split(separator: "\n").prefix(4).joined(separator: ". ")
+        return preview.count > 160 ? String(preview.prefix(160)) + "…" : preview
+    }
+
+    var timeOfDay: TimeOfDay { TimeOfDay(date) }
+}
+
+enum TimeOfDay: Int, CaseIterable, Comparable {
+    case morning, afternoon, evening
+
+    init(_ date: Date) {
+        let hour = Calendar.current.component(.hour, from: date)
+        self = hour < 12 ? .morning : hour < 17 ? .afternoon : .evening
+    }
+
+    var title: String {
+        switch self {
+        case .morning: String(localized: "Morning")
+        case .afternoon: String(localized: "Afternoon")
+        case .evening: String(localized: "Evening")
+        }
+    }
+
+    static func < (lhs: Self, rhs: Self) -> Bool { lhs.rawValue < rhs.rawValue }
+}
+
+extension Shot {
 
     var menuThumbnail: NSImage? {
         guard let image else { return nil }
@@ -67,16 +100,27 @@ enum ShotImaging {
         return SendableImage(cgImage: image)
     }
 
-    /// The largest legible line of text in the screenshot, used as its handwritten caption.
-    static func headline(_ url: URL) -> String? {
+    struct Reading: Sendable {
+        /// The largest legible line, used as the handwritten caption.
+        var headline: String?
+        var text: String
+    }
+
+    static func read(_ url: URL) -> Reading? {
         guard let image = thumbnail(url, maxPixel: 1800)?.cgImage else { return nil }
         let request = VNRecognizeTextRequest()
         request.recognitionLevel = .accurate
         request.usesLanguageCorrection = true
         try? VNImageRequestHandler(cgImage: image).perform([request])
+        let observations = request.results ?? []
+
+        let lines = observations
+            .sorted { $0.boundingBox.minY > $1.boundingBox.minY }
+            .compactMap { $0.topCandidates(1).first?.string.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
 
         var best: (score: CGFloat, text: String)?
-        for observation in request.results ?? [] {
+        for observation in observations {
             guard let candidate = observation.topCandidates(1).first, candidate.confidence > 0.5 else { continue }
             let text = candidate.string.trimmingCharacters(in: .whitespacesAndNewlines)
             guard (3...40).contains(text.count), !text.contains("://"), !text.lowercased().hasPrefix("www.") else { continue }
@@ -85,7 +129,7 @@ enum ShotImaging {
             let score = observation.boundingBox.height * (text.count >= 5 ? 1 : 0.7)
             if score > (best?.score ?? 0) { best = (score, text) }
         }
-        guard let text = best?.text else { return nil }
-        return text.count > 24 ? text.prefix(22).trimmingCharacters(in: .whitespaces) + "…" : text
+        let headline = best.map { $0.text.count > 24 ? $0.text.prefix(22).trimmingCharacters(in: .whitespaces) + "…" : $0.text }
+        return Reading(headline: headline, text: lines.joined(separator: "\n"))
     }
 }

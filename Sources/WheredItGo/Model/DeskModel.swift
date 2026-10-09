@@ -35,6 +35,10 @@ final class DeskModel {
     private(set) var sweeping = false
     private(set) var tossed: Set<Shot.ID> = []
     private(set) var sweptCount = 0
+    /// Where the pointer is across the lifted card, from 0 (left edge) to 1 (right edge).
+    private(set) var sheen = 0.5
+    var cameraHop = false
+    @ObservationIgnored var panelFrame = CGRect.zero
     private var showPileAlways = true
     private var lingering = false
 
@@ -169,8 +173,9 @@ final class DeskModel {
             if let thumbnail = await Task.detached(priority: .userInitiated, operation: { ShotImaging.thumbnail(url, maxPixel: 720) }).value {
                 shot.image = NSImage(cgImage: thumbnail.cgImage, size: .zero)
             }
-            guard smart else { return }
-            if let headline = await Task.detached(priority: .utility, operation: { ShotImaging.headline(url) }).value {
+            guard let reading = await Task.detached(priority: .utility, operation: { ShotImaging.read(url) }).value else { return }
+            shot.text = reading.text
+            if smart, let headline = reading.headline {
                 withAnimation(.easeInOut(duration: 0.4)) { shot.title = headline }
             }
         }
@@ -251,6 +256,9 @@ final class DeskModel {
         try? await Task.sleep(for: .milliseconds(380))
         log.info("Print landed: \(shot.title, privacy: .private); pile has \(self.shots.count)")
         playLanding()
+        withAnimation(.spring(duration: 0.18, bounce: 0.6)) { cameraHop = true }
+        try? await Task.sleep(for: .milliseconds(160))
+        withAnimation(.spring(duration: 0.45, bounce: 0.55)) { cameraHop = false }
         try? await Task.sleep(for: .milliseconds(300))
     }
 
@@ -323,10 +331,24 @@ final class DeskModel {
             if let index = Layout.fanCard(inward: pointer.inward, up: pointer.up, count: items.count,
                                           trailing: corner.isTrailing, lifted: lifted) {
                 target = items[index].id
+                let across = (Layout.fanCardCenter(index: index) - pointer.inward) / Layout.cardWidth
+                sheen = min(1, max(0, 0.5 + (corner.isTrailing ? across : -across)))
             }
         }
         guard target != hoveredShot else { return }
         withAnimation(.spring(duration: 0.25, bounce: 0.3)) { hoveredShot = target }
+    }
+
+    /// Which way the camera lens looks to face the pointer, as a vector up to length 1 (y points up).
+    func lensGaze() -> CGSize {
+        guard panelFrame != .zero else { return .zero }
+        let lens = CGPoint(x: corner.isTrailing ? panelFrame.maxX - Layout.lensInset.width : panelFrame.minX + Layout.lensInset.width,
+                           y: panelFrame.maxY - Layout.lensInset.height)
+        let mouse = NSEvent.mouseLocation
+        let dx = mouse.x - lens.x, dy = mouse.y - lens.y
+        let distance = max(1, hypot(dx, dy))
+        let reach = min(1, distance / 260)
+        return CGSize(width: dx / distance * reach, height: dy / distance * reach)
     }
 
     /// Wiggling the pointer over a developing print speeds it up, like shaking a Polaroid.
@@ -369,6 +391,12 @@ final class DeskModel {
         if let image = NSImage(contentsOf: shot.url) {
             pasteboard.writeObjects([image])
         }
+    }
+
+    func copyText(_ shot: Shot) {
+        guard let text = shot.text, !text.isEmpty else { return }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(text, forType: .string)
     }
 
     func remove(_ shot: Shot) {
@@ -455,6 +483,11 @@ extension DeskModel {
         pointerInside = false
         tossed = []
         sweptCount = 0
+    }
+
+    func stageHover(index: Int, sheen: Double) {
+        hoveredShot = visibleShots[index].id
+        self.sheen = sheen
     }
 
     func stageSweep(pointerInside: Bool, tossed count: Int, swept: Int) {

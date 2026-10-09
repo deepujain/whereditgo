@@ -23,6 +23,7 @@ struct DeskView: View {
 struct PrintStation: View {
     let model: DeskModel
     let namespace: Namespace.ID
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -45,7 +46,11 @@ struct PrintStation: View {
                 .help(Text("Wiggle the pointer to develop faster, or drag it out right away."))
             }
 
-            CameraView(flash: model.flash)
+            TimelineView(.animation(minimumInterval: 1 / 30, paused: !model.cameraShown || reduceMotion)) { _ in
+                CameraView(flash: model.flash, gaze: reduceMotion ? .zero : model.lensGaze())
+            }
+                .scaleEffect(x: model.cameraHop ? 1.03 : 1, y: model.cameraHop ? 0.96 : 1, anchor: .bottom)
+                .offset(y: model.cameraHop ? -6 : 0)
                 .scaleEffect(model.cameraShown ? 1 : 0.82, anchor: .bottom)
                 .rotationEffect(.degrees(model.flash * -2.5), anchor: .bottom)
                 .offset(y: (model.cameraShown ? 0 : 50) - model.flash * 3)
@@ -179,7 +184,10 @@ struct PileCard: View {
         let sign: CGFloat = trailing ? -1 : 1
         let fanAngle = Layout.fanAngle(index: index, trailing: trailing)
         let toss = model.tossed.contains(shot.id) && !reduceMotion
-        PolaroidView(shot: shot, lifted: hovering && expanded)
+        let featured = hovering && expanded
+        PolaroidView(shot: shot, lifted: featured, sheen: featured ? model.sheen : nil)
+            .rotation3DEffect(.degrees(featured && !reduceMotion ? (model.sheen - 0.5) * 16 : 0),
+                              axis: (x: 0, y: 1, z: 0), perspective: 0.5)
             .matchedGeometryEffect(id: shot.id, in: namespace)
             .scaleEffect(hovering && expanded ? Layout.fanHoverScale : 1, anchor: .bottom)
             .rotationEffect(.degrees(expanded ? fanAngle : shot.tilt), anchor: .bottom)
@@ -201,6 +209,8 @@ struct PileCard: View {
             .contextMenu {
                 Button("Open") { model.open(shot) }
                 Button("Copy") { model.copy(shot) }
+                Button("Copy Text") { model.copyText(shot) }
+                    .disabled(shot.text?.isEmpty ?? true)
                 Button("Show in Finder") { model.reveal(shot) }
                 Divider()
                 Button("Remove from Pile") { model.remove(shot) }
@@ -209,6 +219,7 @@ struct PileCard: View {
             .help(Text("Drag into any app. Double-click to open."))
             .accessibilityAction(named: Text("Open")) { model.open(shot) }
             .accessibilityAction(named: Text("Copy")) { model.copy(shot) }
+            .accessibilityAction(named: Text("Copy Text")) { model.copyText(shot) }
             .accessibilityAction(named: Text("Show in Finder")) { model.reveal(shot) }
     }
 }

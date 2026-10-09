@@ -23,6 +23,12 @@ enum Snapshots {
             }
             return shot
         }
+        let samples = folder.appending(path: "samples")
+        try FileManager.default.createDirectory(at: samples, withIntermediateDirectories: true)
+        for kind in SampleScreen.Kind.allCases {
+            try write(AnyView(SampleScreen(kind: kind).frame(width: 360, height: 225)), to: samples.appending(path: "\(kind).png"))
+        }
+
         let model = DeskModel()
 
         model.stage(shots: Array(shots.dropFirst()), printing: shots.first, develop: 0.45, expanded: false, hint: true)
@@ -36,6 +42,14 @@ enum Snapshots {
         try write(scene(model, size: CGSize(width: Layout.fanWidth(count: model.visibleShots.count), height: Layout.fanHeight)),
                   to: folder.appending(path: "3-fan.png"))
         try write(hitMap(model), to: folder.appending(path: "3-fan-hits.png"))
+        model.stageHover(index: 1, sheen: 0.72)
+        try write(scene(model, size: CGSize(width: Layout.fanWidth(count: model.visibleShots.count), height: Layout.fanHeight)),
+                  to: folder.appending(path: "3-fan-holo.png"))
+        model.hoveredShot = nil
+
+        let gazes = [CGSize(width: -1, height: 0.3), .zero, CGSize(width: 0.8, height: -0.6)]
+        try write(AnyView(HStack(spacing: 24) { ForEach(gazes.indices, id: \.self) { CameraView(gaze: gazes[$0]) } }
+            .padding(24).background(Color(white: 0.85))), to: folder.appending(path: "9-camera-gaze.png"))
 
         model.stage(shots: Array(shots.prefix(4)), printing: nil, develop: 1, expanded: true, hint: false)
         for (index, shot) in model.visibleShots.enumerated() {

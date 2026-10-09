@@ -66,11 +66,19 @@ enum Layout {
         (trailing ? 1 : -1) * (2.5 - Double(index) * 2.2)
     }
 
+    /// Distance from the pile's screen edge to the middle of a fanned card.
+    static func fanCardCenter(index: Int) -> CGFloat {
+        edgeInset + CGFloat(index) * fanStep + cardWidth / 2
+    }
+
+    /// The camera lens centre, measured inward from the panel's screen edge and down from its top.
+    static let lensInset = CGSize(width: 90, height: 74)
+
     /// Index of the topmost fanned card under a point measured inward from the pile's
     /// screen edge and up from the bottom of the panel.
     static func fanCard(inward: CGFloat, up: CGFloat, count: Int, trailing: Bool, lifted: Int?) -> Int? {
         func contains(_ index: Int) -> Bool {
-            let anchorInward = edgeInset + CGFloat(index) * fanStep + cardWidth / 2
+            let anchorInward = fanCardCenter(index: index)
             let anchorUp = pileBottomInset + CGFloat(index) * 4
             let theta = fanAngle(index: index, trailing: trailing) * .pi / 180
             let dx = (inward - anchorInward) * (trailing ? -1 : 1), dy = anchorUp - up

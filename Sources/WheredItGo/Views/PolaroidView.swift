@@ -4,6 +4,8 @@ struct PolaroidView: View {
     let shot: Shot
     var develop: Double = 1
     var lifted = false
+    /// Pointer position across the card (0...1) for a holographic glint, or nil for none.
+    var sheen: Double?
 
     private let ink = Color(red: 0.16, green: 0.19, blue: 0.36)
 
@@ -11,6 +13,11 @@ struct PolaroidView: View {
         VStack(spacing: 0) {
             photo
                 .frame(width: Layout.cardWidth - Layout.cardInset * 2, height: Layout.photoHeight)
+                .overlay {
+                    if let sheen {
+                        Holo(position: sheen).allowsHitTesting(false)
+                    }
+                }
                 .clipped()
                 .overlay(Rectangle().strokeBorder(.black.opacity(0.14), lineWidth: 0.5))
             VStack(spacing: 0) {
@@ -36,6 +43,7 @@ struct PolaroidView: View {
         .shadow(color: Color(red: 0.2, green: 0.1, blue: 0).opacity(lifted ? 0.34 : 0.24), radius: lifted ? 16 : 7, y: lifted ? 12 : 4)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(shot.accessibilityLabel)
+        .accessibilityValue(shot.accessibilityText ?? "")
         .accessibilityAddTraits(.isImage)
     }
 
@@ -62,6 +70,28 @@ struct PolaroidView: View {
         .overlay {
             LinearGradient(colors: [.white.opacity(0.22), .white.opacity(0)], startPoint: .topLeading, endPoint: UnitPoint(x: 0.45, y: 0.55))
         }
+    }
+}
+
+/// A soft rainbow glint that slides across the card with the pointer, like a foil trading card.
+private struct Holo: View {
+    let position: Double
+
+    var body: some View {
+        let center = position * 1.4 - 0.2
+        func stop(_ color: Color, _ offset: Double) -> Gradient.Stop {
+            .init(color: color, location: min(1, max(0, center + offset)))
+        }
+        return LinearGradient(stops: [
+            stop(.clear, -0.34),
+            stop(Color(hue: 0.52, saturation: 0.5, brightness: 1).opacity(0.18), -0.16),
+            stop(Color(hue: 0.14, saturation: 0.35, brightness: 1).opacity(0.3), -0.04),
+            stop(.white.opacity(0.34), 0),
+            stop(Color(hue: 0.88, saturation: 0.45, brightness: 1).opacity(0.22), 0.1),
+            stop(Color(hue: 0.68, saturation: 0.5, brightness: 1).opacity(0.14), 0.2),
+            stop(.clear, 0.34),
+        ], startPoint: .topLeading, endPoint: .bottomTrailing)
+        .blendMode(.plusLighter)
     }
 }
 

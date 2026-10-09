@@ -29,11 +29,13 @@ You take a screenshot, the little preview vanishes before you can drag it anywhe
 ## Features
 
 - **Instant prints.** Every new screenshot comes out of the camera and develops in a few seconds. Wiggle the pointer over it to develop faster, like shaking a Polaroid.
-- **A pile you can fan out.** Hover the pile and it spreads into a hand of cards, newest first.
-- **Drag into anything.** Drag a print into any app. Double-click to open it. Right-click to copy, show in Finder, remove it from the pile, or move it to the Trash.
+- **A camera with a little personality.** While it prints, the lens follows your pointer around the screen, and it gives a happy hop when a print lands.
+- **A pile you can fan out.** Hover the pile and it spreads into a hand of cards, newest first. The card under your pointer lifts, tilts toward you, and catches a foil-like shine as you move across it.
+- **Drag into anything.** Drag a print into any app. Double-click to open it. Right-click to copy the image, copy its text, show it in Finder, remove it from the pile, or move it to the Trash.
 - **Handwritten captions.** On-device text recognition picks the most prominent words in each screenshot, so you can tell them apart at a glance. Nothing leaves your Mac.
+- **Your day at a glance.** The menu bar lists today’s prints grouped into morning, afternoon, and evening.
 - **Sweep it away.** Hover the pile and click **Sweep** to flick every print off with a swish and a poof. Changed your mind? **Undo** puts them back. Your files are never touched.
-- **Respects your setup.** Follows the screenshot location you chose in the Screenshot app, supports Reduce Motion, VoiceOver, and launch at login.
+- **Respects your setup.** Follows the screenshot location you chose in the Screenshot app and supports launch at login. With Reduce Motion on, prints fade instead of flying. VoiceOver reads each print’s caption and the text inside it.
 - **Optional tidying.** Copy each screenshot to the clipboard, or move screenshots off your Desktop into `Pictures/Where’d It Go/<date>`.
 
 <p align="center">
@@ -48,9 +50,11 @@ You take a screenshot, the little preview vanishes before you can drag it anywhe
 
 ## Install
 
-Download the latest `Where’d It Go.app` from the [website](https://1xaispark.com/apps/wherediditgo.html), or build it yourself (below). Move it to `/Applications` and open it. A photo-stack icon appears in the menu bar.
+1. Download **[WheredItGo.zip](https://github.com/deepujain/whereditgo/releases/latest/download/WheredItGo.zip)** (macOS 14 or later, Apple silicon and Intel).
+2. Open the zip and drag **Where’d It Go.app** into your **Applications** folder.
+3. Open it. The app isn’t notarized by Apple yet, so the first time macOS says it can’t verify the developer. Open **System Settings › Privacy & Security**, scroll down, and click **Open Anyway**. You only need to do this once.
 
-The first time it runs, macOS asks for permission to read your Desktop (or wherever your screenshots are saved). That’s the only access it needs.
+A photo-stack icon appears in the menu bar. macOS then asks for permission to read your Desktop (or wherever your screenshots are saved). That’s the only access it needs.
 
 **Tip:** macOS holds each screenshot back for about five seconds while it shows its own floating thumbnail. Turn that off in the welcome tour or in **Settings › Speed** so prints appear instantly.
 
@@ -64,7 +68,7 @@ cd whereditgo
 ./build.sh
 ```
 
-This builds a release binary, assembles `build/Where'd It Go.app` with its icon, and signs it for local use. Run `./build.sh debug` for a debug build.
+This builds a release binary, assembles `build/Where'd It Go.app` with its icon, and signs it for local use. Run `./build.sh debug` for a debug build, or `./package.sh` to produce the downloadable `build/WheredItGo.zip`.
 
 ## How it works
 
@@ -83,7 +87,8 @@ Sources/WheredItGo/
   Support/   Preferences, screenshot folder helpers, and sounds
   Debug/     Debug-only snapshot renderer for reviewing the UI
 Resources/   Info.plist
-build.sh     Builds and packages the .app
+build.sh     Builds and signs the .app
+package.sh   Builds the downloadable zip
 ```
 
 ## License

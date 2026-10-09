@@ -105,7 +105,9 @@ final class DeskPanelController {
         size.width = min(size.width, area.width - Layout.screenMargin * 2)
         size.height = min(size.height, area.height - Layout.screenMargin * 2)
         let x = layout.corner.isTrailing ? area.maxX - size.width - Layout.screenMargin : area.minX + Layout.screenMargin
-        panel.setFrame(NSRect(x: x, y: area.minY + Layout.screenMargin, width: size.width, height: size.height), display: true)
+        let frame = NSRect(x: x, y: area.minY + Layout.screenMargin, width: size.width, height: size.height)
+        panel.setFrame(frame, display: true)
+        model.panelFrame = frame
         panel.orderFrontRegardless()
     }
 }

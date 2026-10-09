@@ -3,6 +3,8 @@ import SwiftUI
 /// A little instant camera, drawn in a 180 × 126 pt design space.
 struct CameraView: View {
     var flash: Double = 0
+    /// Direction the lens looks, up to length 1, with y pointing up.
+    var gaze: CGSize = .zero
 
     private let cream = LinearGradient(
         colors: [Color(red: 0.99, green: 0.97, blue: 0.93), Color(red: 0.94, green: 0.90, blue: 0.83), Color(red: 0.86, green: 0.80, blue: 0.70)],
@@ -99,14 +101,21 @@ struct CameraView: View {
                                          center: UnitPoint(x: 0.5, y: 0.4), startRadius: 0, endRadius: 44))
             Circle().strokeBorder(.white.opacity(0.18), lineWidth: 1)
             Circle().fill(Color(white: 0.08)).overlay(Circle().strokeBorder(Color(white: 0.24), lineWidth: 1.5)).padding(9)
-            Circle()
-                .fill(RadialGradient(colors: [Color(red: 0.43, green: 0.5, blue: 0.84), Color(red: 0.16, green: 0.18, blue: 0.42),
-                                              Color(red: 0.05, green: 0.05, blue: 0.13), .black],
-                                     center: UnitPoint(x: 0.38, y: 0.34), startRadius: 0, endRadius: 30))
-                .padding(17)
-            Circle().fill(Color(red: 0.02, green: 0.03, blue: 0.06)).frame(width: 14, height: 14)
-            Ellipse().fill(.white.opacity(0.55)).frame(width: 13, height: 8).rotationEffect(.degrees(-30)).offset(x: -9, y: -10)
-            Circle().fill(.white.opacity(0.3)).frame(width: 4, height: 4).offset(x: 9, y: 9)
+            ZStack {
+                Circle()
+                    .fill(RadialGradient(colors: [Color(red: 0.43, green: 0.5, blue: 0.84), Color(red: 0.16, green: 0.18, blue: 0.42),
+                                                  Color(red: 0.05, green: 0.05, blue: 0.13), .black],
+                                         center: UnitPoint(x: 0.38, y: 0.34), startRadius: 0, endRadius: 30))
+                    .padding(17)
+                Circle().fill(Color(red: 0.02, green: 0.03, blue: 0.06)).frame(width: 14, height: 14)
+                    .offset(x: gaze.width * 3, y: -gaze.height * 3)
+            }
+            .offset(x: gaze.width * 3, y: -gaze.height * 3)
+            .clipShape(Circle().inset(by: 10))
+            Ellipse().fill(.white.opacity(0.55)).frame(width: 13, height: 8).rotationEffect(.degrees(-30))
+                .offset(x: -9 - gaze.width * 1.5, y: -10 + gaze.height * 1.5)
+            Circle().fill(.white.opacity(0.3)).frame(width: 4, height: 4)
+                .offset(x: 9 - gaze.width, y: 9 + gaze.height)
         }
     }
 }
