@@ -60,12 +60,13 @@ enum Snapshots {
             model.stageFeed(progress)
             try write(scene(model, size: feedSize), to: folder.appending(path: "1-feed-\(Int(progress * 100)).png"))
         }
-        for relax in [0.4, 0.8] {
+        for relax in [0.4, 0.8, 1.0] {
             model.stage(shots: [], printing: shots.first, develop: 0.05, expanded: false, hint: false)
             model.stageFeed(1, relax: relax)
             try write(scene(model, size: feedSize), to: folder.appending(path: "1-release-\(Int(relax * 100)).png"))
         }
-
+        model.stage(shots: [], printing: shots.first, develop: 0, expanded: false, hint: false)
+        try write(scene(model, size: feedSize), to: folder.appending(path: "1-release-flat.png"))
         model.stage(shots: shots, printing: nil, develop: 1, expanded: false, hint: false)
         try write(scene(model, size: Layout.pileSize), to: folder.appending(path: "2-pile.png"))
         model.stageTucked(true)

@@ -1,8 +1,10 @@
-import CoreImage.CIFilterBuiltins
+import SceneKit
 import SwiftUI
 
-/// The part of a print that has left the camera slot, drawn as a flexible sheet: it leaves the slot
-/// pointing toward the viewer, droops more the further it hangs out, and falls flat when released.
+/// The part of a print that has left the camera slot, as a real sheet of paper: it leaves the slot
+/// tilted toward the viewer, sags under its own weight, its leading edge lifts with the curl the
+/// film keeps from the cartridge, its sides bow, and it sways as the rollers push it. Light glides
+/// across every bend and its shadow falls on the screen behind. Released, it springs flat.
 struct CurlingPrint: View, Animatable {
     /// The undeveloped print, `Layout.cardWidth` × `Layout.cardHeight`.
     let sheet: NSImage
@@ -17,121 +19,226 @@ struct CurlingPrint: View, Animatable {
     }
 
     var body: some View {
-        let length = Layout.cardHeight * min(1, max(0, progress))
-        let slices = Self.slices(length: length, relax: relax)
-        let page = PageCurl.image(sheet, amount: Self.curl(progress: progress, relax: relax))
-        ZStack(alignment: .top) {
-            ForEach(slices.indices, id: \.self) { index in
-                let slice = slices[index]
-                Image(nsImage: page)
-                    .resizable()
-                    .frame(width: Layout.cardWidth, height: Layout.cardHeight)
-                    .offset(y: -(Layout.cardHeight - length + slice.start))
-                    .frame(width: Layout.cardWidth, height: slice.length, alignment: .top)
-                    .clipped()
-                    .brightness(slice.shade)
-                    .scaleEffect(x: slice.scale, y: slice.height / slice.length, anchor: .top)
-                    .offset(y: slice.top)
+        Group {
+            if let image = PaperScene.render(sheet, progress: progress, relax: relax) {
+                Image(nsImage: image)
+                    .frame(width: PaperScene.canvas.width, height: PaperScene.canvas.height)
             }
         }
         .frame(width: Layout.cardWidth, height: Layout.cardHeight, alignment: .top)
-        .compositingGroup()
-        .shadow(color: Color(red: 0.2, green: 0.1, blue: 0).opacity(0.25), radius: 6, y: 4)
-    }
-
-    // MARK: Geometry
-
-    private struct Slice {
-        var start: CGFloat
-        var length: CGFloat
-        var top: CGFloat
-        var height: CGFloat
-        var scale: CGFloat
-        var shade: Double
-    }
-
-    /// Angle from straight down, in radians, at which paper leaves the slot.
-    private static let exitAngle = 1.2
-    private static let viewerDistance: CGFloat = 520
-    private static let sliceLength: CGFloat = 3
-
-    private static func slices(length: CGFloat, relax: Double) -> [Slice] {
-        guard length > 0.5 else { return [] }
-        let count = max(1, Int((length / sliceLength).rounded(.up)))
-        let step = length / CGFloat(count)
-        var y: CGFloat = 0, z: CGFloat = 0
-        var result: [Slice] = []
-        result.reserveCapacity(count)
-        for index in 0..<count {
-            let start = CGFloat(index) * step
-            let theta = angle(at: start + step / 2, length: length) * (1 - relax)
-            let near = viewerDistance / (viewerDistance - z)
-            let top = y * near
-            y += cos(theta) * step
-            z += sin(theta) * step
-            let far = viewerDistance / (viewerDistance - z)
-            let slotShadow = -0.28 * exp(-start / 7) * (1 - min(1, max(0, relax)))
-            result.append(Slice(start: start, length: step, top: top, height: max(0.01, y * far - top + 0.6),
-                                scale: (near + far) / 2, shade: slotShadow + 0.07 * sin(theta)))
-        }
-        return result
-    }
-
-    /// How far the leading corner has turned over: it lifts as soon as it clears the slot, holds its
-    /// set while the rollers feed, and springs flat with the rest of the sheet.
-    private static func curl(progress: Double, relax: Double) -> Double {
-        let lift = min(1, max(0, progress / 0.6))
-        return 0.28 * lift * lift * (3 - 2 * lift) * max(0, 1 - relax)
-    }
-
-    /// Stiff paper held at the slot sags like a cantilever under its own weight:
-    /// the bend at each point grows with the cube of how much paper hangs beyond it.
-    private static func angle(at s: CGFloat, length: CGFloat) -> CGFloat {
-        let full = Layout.cardHeight
-        let sag = 3 * (exitAngle + 0.12) / (full * full * full)
-        let hanging = pow(length, 3) - pow(length - s, 3)
-        return max(-0.12, exitAngle - sag * hanging / 3)
     }
 }
 
-/// Turns a print's bottom-right corner over like a page in a book, with the shading and cast shadow
-/// of Core Image's page curl, and the paper's back showing on the fold.
+/// Renders the sheet offscreen with SceneKit. The scene's z = 0 plane maps one point to one point,
+/// with the slot's centre at the top centre of `canvas`, so a flat sheet lands exactly where the
+/// print's flat view takes over.
 @MainActor
-enum PageCurl {
-    private static let context = CIContext(options: [.cacheIntermediates: false])
-    private static let back = CIImage(color: CIColor(red: 0.86, green: 0.845, blue: 0.82))
-    /// Bottom-right in Core Image's y-up space, turning up toward the photo.
-    private static let angle: Float = 2.2
-    private static let radius: CGFloat = 14
-    private static var last: (sheet: NSImage, amount: Double, image: NSImage)?
+enum PaperScene {
+    static let margin: CGFloat = 30
+    static let canvas = CGSize(width: Layout.cardWidth + margin * 2, height: Layout.cardHeight + margin)
 
-    static func image(_ sheet: NSImage, amount: Double) -> NSImage {
-        let amount = (amount * 400).rounded() / 400
-        guard amount > 0 else { return sheet }
-        if let last, last.sheet === sheet, last.amount == amount { return last.image }
-        guard let cgImage = sheet.cgImage(forProposedRect: nil, context: nil, hints: nil) else { return sheet }
-        let source = CIImage(cgImage: cgImage)
-        let scale = CGFloat(cgImage.width) / sheet.size.width
-        let filter = CIFilter.pageCurlWithShadowTransition()
-        filter.inputImage = source
-        filter.targetImage = CIImage.empty().cropped(to: source.extent)
-        filter.backsideImage = back.cropped(to: source.extent)
-        filter.extent = source.extent
-        filter.time = Float(amount)
-        filter.angle = angle
-        filter.radius = Float(radius * scale)
-        filter.shadowSize = 0.5
-        filter.shadowAmount = 0.6
-        // The fold always lands on the print, so keep only what falls on it: the cast shadow on the
-        // transparent background would show the seams between the sheet's slices.
-        let clip = CIFilter.sourceInCompositing()
-        clip.inputImage = filter.outputImage
-        clip.backgroundImage = source
-        guard let output = clip.outputImage?.cropped(to: source.extent),
-              let curled = context.createCGImage(output, from: source.extent) else { return sheet }
-        let image = NSImage(cgImage: curled, size: sheet.size)
-        last = (sheet, amount, image)
+    /// Angle toward the viewer, in radians, at which paper leaves the slot.
+    private static let exitAngle: Double = 0.95
+    /// The extra turn at the leading edge from the film's curl.
+    private static let edgeCurl: Double = 0.85
+    private static let edgeCurlLength: Double = 46
+    private static let viewerDistance: Double = 520
+    private static let rowStep: Double = 2
+    private static let columns = 14
+
+    private static let scene = makeScene()
+    private static let paper = SCNNode()
+    private static let material: SCNMaterial = {
+        let material = SCNMaterial()
+        material.lightingModel = .blinn
+        material.specular.contents = NSColor(white: 0.32, alpha: 1)
+        material.shininess = 0.35
+        material.isDoubleSided = true
+        material.multiply.contents = slotShade
+        material.multiply.wrapT = .clamp
+        return material
+    }()
+    /// Darkens paper just out of the slot, in the slot's frame: shifted per frame to follow it.
+    private static let slotShade: NSImage = {
+        let rows = 256
+        let image = NSImage(size: NSSize(width: 4, height: rows))
+        image.lockFocus()
+        for row in 0..<rows {
+            let s = Double(row) / Double(rows) * Double(Layout.cardHeight)
+            NSColor(white: 1 - 0.3 * exp(-s / 7), alpha: 1).setFill()
+            NSRect(x: 0, y: rows - row - 1, width: 4, height: 1).fill()
+        }
+        image.unlockFocus()
         return image
+    }()
+    private static let renderer: SCNRenderer = {
+        let renderer = SCNRenderer(device: MTLCreateSystemDefaultDevice(), options: nil)
+        renderer.scene = scene
+        renderer.pointOfView = scene.rootNode.childNode(withName: "eye", recursively: false)
+        renderer.autoenablesDefaultLighting = false
+        return renderer
+    }()
+    private static weak var texturedSheet: NSImage?
+
+    static func render(_ sheet: NSImage, progress: Double, relax: Double) -> NSImage? {
+        let progress = min(1, max(0, progress))
+        let length = Double(Layout.cardHeight) * progress
+        guard length > 0.5 else { return nil }
+        if texturedSheet !== sheet {
+            material.diffuse.contents = sheet
+            texturedSheet = sheet
+        }
+        let held = max(-0.15, 1 - relax)
+        paper.geometry = geometry(length: length, progress: progress, held: held)
+        paper.geometry?.firstMaterial = material
+        material.multiply.contentsTransform = SCNMatrix4MakeTranslation(0, -(1 - progress), 0)
+        material.multiply.intensity = max(0, min(1, held))
+
+        let scale = NSScreen.main?.backingScaleFactor ?? 2
+        // The eye looks straight at the slot, so render twice the height and keep the lower half.
+        let full = CGSize(width: canvas.width * scale, height: canvas.height * 2 * scale)
+        let snapshot = renderer.snapshot(atTime: 0, with: full, antialiasingMode: .multisampling4X)
+        guard let cgImage = snapshot.cgImage(forProposedRect: nil, context: nil, hints: nil),
+              let lower = cgImage.cropping(to: CGRect(x: 0, y: CGFloat(cgImage.height) / 2,
+                                                      width: CGFloat(cgImage.width), height: CGFloat(cgImage.height) / 2))
+        else { return nil }
+        return NSImage(cgImage: lower, size: canvas)
+    }
+
+    // MARK: Scene
+
+    private static func makeScene() -> SCNScene {
+        let scene = SCNScene()
+        scene.background.contents = NSColor.clear
+
+        let eye = SCNNode()
+        eye.name = "eye"
+        let camera = SCNCamera()
+        camera.projectionDirection = .vertical
+        camera.fieldOfView = 2 * atan(Double(canvas.height) / viewerDistance) * 180 / .pi
+        camera.zNear = 10
+        camera.zFar = 2000
+        eye.camera = camera
+        eye.position = SCNVector3(0, 0, viewerDistance)
+        scene.rootNode.addChildNode(eye)
+
+        let ambient = SCNNode()
+        ambient.light = SCNLight()
+        ambient.light?.type = .ambient
+        ambient.light?.intensity = 350
+        scene.rootNode.addChildNode(ambient)
+
+        // Nearly along the line of sight, a little above: flat paper is fully lit, every bend away
+        // from it falls into soft shade, and the shadow lands just below wherever the sheet lifts.
+        // Directional lights and deferred shadows draw nothing on a shadow-only surface offscreen.
+        let key = SCNNode()
+        let light = SCNLight()
+        light.type = .spot
+        light.spotInnerAngle = 50
+        light.spotOuterAngle = 80
+        light.intensity = 680
+        light.castsShadow = true
+        light.shadowMode = .forward
+        light.shadowColor = NSColor(red: 0.2, green: 0.1, blue: 0, alpha: 0.3)
+        light.shadowRadius = 9
+        light.shadowSampleCount = 16
+        light.shadowBias = 4
+        light.zNear = 50
+        light.zFar = 1500
+        key.light = light
+        key.position = SCNVector3(-30, 50, 520)
+        key.look(at: SCNVector3(0, -60, 0))
+        scene.rootNode.addChildNode(key)
+
+        let screen = SCNNode(geometry: SCNPlane(width: canvas.width * 2, height: canvas.height * 2))
+        screen.geometry?.firstMaterial?.lightingModel = .shadowOnly
+        screen.position = SCNVector3(0, -canvas.height, -6)
+        scene.rootNode.addChildNode(screen)
+
+        paper.castsShadow = true
+        scene.rootNode.addChildNode(paper)
+        return scene
+    }
+
+    // MARK: Sheet
+
+    private static func geometry(length: Double, progress: Double, held: Double) -> SCNGeometry {
+        let width = Double(Layout.cardWidth), height = Double(Layout.cardHeight)
+        let rows = max(1, Int((length / rowStep).rounded(.up)))
+        let step = length / Double(rows)
+
+        // The centre line of the sheet, from the slot down, in a y-down profile.
+        var spine: [(y: Double, z: Double)] = [(0, 0)]
+        spine.reserveCapacity(rows + 1)
+        for row in 0..<rows {
+            let theta = angle(at: (Double(row) + 0.5) * step, length: length, progress: progress) * held
+            let last = spine[row]
+            spine.append((last.y + cos(theta) * step, last.z + sin(theta) * step))
+        }
+
+        let sway = 0.05 * sin(progress * 11 + 0.6) * (1 - progress * 0.5) * held
+        let bow = 10 * held
+        var positions: [SCNVector3] = []
+        var coordinates: [CGPoint] = []
+        positions.reserveCapacity((rows + 1) * (columns + 1))
+        for row in 0...rows {
+            let s = Double(row) * step
+            let along = s / height
+            for column in 0...columns {
+                let u = Double(column) / Double(columns)
+                let across = 2 * u - 1
+                let z = spine[row].z + bow * along * across * across + sway * s * across
+                positions.append(SCNVector3((u - 0.5) * width, -spine[row].y, z))
+                coordinates.append(CGPoint(x: u, y: (height - length + s) / height))
+            }
+        }
+
+        let stride = columns + 1
+        var normals: [SCNVector3] = []
+        normals.reserveCapacity(positions.count)
+        for row in 0...rows {
+            for column in 0...columns {
+                let left = positions[row * stride + max(0, column - 1)]
+                let right = positions[row * stride + min(columns, column + 1)]
+                let up = positions[max(0, row - 1) * stride + column]
+                let down = positions[min(rows, row + 1) * stride + column]
+                let across = SCNVector3(right.x - left.x, right.y - left.y, right.z - left.z)
+                let along = SCNVector3(up.x - down.x, up.y - down.y, up.z - down.z)
+                var normal = SCNVector3(across.y * along.z - across.z * along.y,
+                                        across.z * along.x - across.x * along.z,
+                                        across.x * along.y - across.y * along.x)
+                let size = max(0.0001, sqrt(normal.x * normal.x + normal.y * normal.y + normal.z * normal.z))
+                normal = SCNVector3(normal.x / size, normal.y / size, normal.z / size)
+                normals.append(normal)
+            }
+        }
+
+        var indices: [Int32] = []
+        indices.reserveCapacity(rows * columns * 6)
+        for row in 0..<rows {
+            for column in 0..<columns {
+                let a = Int32(row * stride + column), b = a + 1
+                let c = Int32((row + 1) * stride + column), d = c + 1
+                indices += [a, c, b, b, c, d]
+            }
+        }
+
+        return SCNGeometry(sources: [SCNGeometrySource(vertices: positions), SCNGeometrySource(normals: normals),
+                                     SCNGeometrySource(textureCoordinates: coordinates)],
+                           elements: [SCNGeometryElement(indices: indices, primitiveType: .triangles)])
+    }
+
+    /// Stiff paper held at the slot sags like a cantilever: the bend at each point grows with the
+    /// cube of how much paper hangs beyond it. The leading edge turns back up with the film's curl,
+    /// more as more paper comes out to carry it, and the sheet flexes as each roller turn pushes it.
+    private static func angle(at s: Double, length: Double, progress: Double) -> Double {
+        let full = Double(Layout.cardHeight)
+        let sag = 3 * (exitAngle + 0.15) / (full * full * full)
+        let hang = exitAngle - sag * (pow(length, 3) - pow(length - s, 3)) / 3
+        let edge = max(0, 1 - (length - s) / edgeCurlLength)
+        let curl = edgeCurl * edge * edge * min(1, length / 70)
+        let flex = 0.07 * sin(progress * 19) * (s / max(1, length)) * (1 - progress * 0.6)
+        return hang + curl + flex
     }
 }
 
