@@ -30,7 +30,7 @@ struct PrintStation: View {
             TimelineView(.animation(minimumInterval: 1 / 30, paused: !model.cameraShown || reduceMotion)) { context in
                 let t = context.date.timeIntervalSinceReferenceDate
                 CameraView(flash: model.flash, gaze: reduceMotion ? .zero : model.lensGaze())
-                    .offset(x: model.motorRunning ? sin(t * 251) * 0.5 : 0, y: model.motorRunning ? cos(t * 317) * 0.35 : 0)
+                    .offset(x: model.motorRunning ? sin(t * 251) * 0.25 : 0, y: model.motorRunning ? cos(t * 317) * 0.2 : 0)
             }
                 .scaleEffect(x: model.cameraHop ? 1.03 : 1, y: model.cameraHop ? 0.96 : 1, anchor: .bottom)
                 .offset(y: model.cameraHop ? -6 : 0)
@@ -41,13 +41,17 @@ struct PrintStation: View {
                 .padding(.top, Layout.cameraTop)
 
             // Drawn over the camera so the print slides out in front of the slot's lower lip.
-            if let shot = model.printing {
+            if model.printing != nil, let sheet = model.feedSheet {
+                CurlingPrint(sheet: sheet, progress: model.eject, relax: model.relax)
+                    .padding(.top, Layout.slotY)
+                    .allowsHitTesting(false)
+            } else if let shot = model.printing {
                 TimelineView(.animation) { context in
                     PolaroidView(shot: shot, develop: model.developProgress(at: context.date))
                 }
                 .matchedGeometryEffect(id: shot.id, in: namespace)
                 .rotationEffect(.degrees(model.wiggle), anchor: .top)
-                .feedingFromSlot(model.eject, flop: model.flop)
+                .frame(width: Layout.cardWidth, height: Layout.cardHeight, alignment: .top)
                 .padding(.top, Layout.slotY)
                 .onDrag { model.dragProvider(for: shot) }
                 .help(Text("Wiggle the pointer to develop faster, or drag it out right away."))

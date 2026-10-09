@@ -1,58 +1,96 @@
 import SwiftUI
 
-/// A print feeding out of the camera slot. Above the slot line it stays hidden; the part that is out
-/// bends toward the viewer over the slot's lip, with the lip's shadow and a curl at the leading edge,
-/// and lies flat once the print is all the way out.
-struct SlotFeed: ViewModifier {
+/// The part of a print that has left the camera slot, drawn as a flexible sheet: it leaves the slot
+/// pointing toward the viewer, droops more the further it hangs out, and falls flat when released.
+struct CurlingPrint: View, Animatable {
+    /// The undeveloped print, `Layout.cardWidth` × `Layout.cardHeight`.
+    let sheet: NSImage
     /// 0 while the print is inside the camera, 1 once it is fully out.
     var progress: Double
-    /// Extra bend in degrees, for the slap as the print falls flat.
-    var flop: Double = 0
+    /// 0 while the rollers hold the print, 1 once it lies flat. Springs may overshoot.
+    var relax: Double
 
-    private static let maxBend = 64.0
+    nonisolated var animatableData: AnimatablePair<Double, Double> {
+        get { AnimatablePair(progress, relax) }
+        set { progress = newValue.first; relax = newValue.second }
+    }
 
-    func body(content: Content) -> some View {
-        let out = min(1, max(0, progress))
-        let emerging = out < 1
-        let curl = pow(1 - out, 0.65)
-        let bend = curl * Self.maxBend + flop
-        content
-            .brightness(-0.16 * curl)
-            .overlay(alignment: .bottom) {
-                LinearGradient(stops: [
-                    .init(color: .clear, location: 0),
-                    .init(color: .white.opacity(0.45), location: 0.55),
-                    .init(color: .black.opacity(0.22), location: 1),
-                ], startPoint: .top, endPoint: .bottom)
-                .frame(height: 16)
-                .opacity(curl)
-                .allowsHitTesting(false)
+    var body: some View {
+        let length = Layout.cardHeight * min(1, max(0, progress))
+        let slices = Self.slices(length: length, relax: relax)
+        ZStack(alignment: .top) {
+            ForEach(slices.indices, id: \.self) { index in
+                let slice = slices[index]
+                Image(nsImage: sheet)
+                    .resizable()
+                    .frame(width: Layout.cardWidth, height: Layout.cardHeight)
+                    .offset(y: -(Layout.cardHeight - length + slice.start))
+                    .frame(width: Layout.cardWidth, height: slice.length, alignment: .top)
+                    .clipped()
+                    .brightness(slice.shade)
+                    .scaleEffect(x: slice.scale, y: slice.height / slice.length, anchor: .top)
+                    .offset(y: slice.top)
             }
-            .offset(y: (out - 1) * Layout.cardHeight)
-            .frame(width: Layout.cardWidth, height: Layout.cardHeight, alignment: .top)
-            .mask(alignment: .top) {
-                Rectangle()
-                    .frame(width: Layout.cardWidth * 2, height: Layout.cardHeight * (emerging ? 1 : 3))
-                    .offset(y: emerging ? 0 : -Layout.cardHeight)
-            }
-            .overlay(alignment: .top) {
-                VStack(spacing: 0) {
-                    LinearGradient(colors: [.black.opacity(0.5), .black.opacity(0)], startPoint: .top, endPoint: .bottom)
-                        .frame(height: 9)
-                    LinearGradient(colors: [.white.opacity(0), .white.opacity(0.35), .white.opacity(0)], startPoint: .top, endPoint: .bottom)
-                        .frame(height: 5)
-                        .blendMode(.plusLighter)
-                }
-                .frame(width: Layout.cardWidth)
-                .opacity(emerging ? min(1, out * 10) : 0)
-                .allowsHitTesting(false)
-            }
-            .rotation3DEffect(.degrees(bend), axis: (x: 1, y: 0, z: 0), anchor: .top, perspective: 0.55)
+        }
+        .frame(width: Layout.cardWidth, height: Layout.cardHeight, alignment: .top)
+        .compositingGroup()
+        .shadow(color: Color(red: 0.2, green: 0.1, blue: 0).opacity(0.25), radius: 6, y: 4)
+    }
+
+    // MARK: Geometry
+
+    private struct Slice {
+        var start: CGFloat
+        var length: CGFloat
+        var top: CGFloat
+        var height: CGFloat
+        var scale: CGFloat
+        var shade: Double
+    }
+
+    /// Angle from straight down, in radians, at which paper leaves the slot.
+    private static let exitAngle = 1.2
+    private static let viewerDistance: CGFloat = 520
+    private static let sliceLength: CGFloat = 3
+
+    private static func slices(length: CGFloat, relax: Double) -> [Slice] {
+        guard length > 0.5 else { return [] }
+        let count = max(1, Int((length / sliceLength).rounded(.up)))
+        let step = length / CGFloat(count)
+        var y: CGFloat = 0, z: CGFloat = 0
+        var result: [Slice] = []
+        result.reserveCapacity(count)
+        for index in 0..<count {
+            let start = CGFloat(index) * step
+            let theta = angle(at: start + step / 2, length: length) * (1 - relax)
+            let near = viewerDistance / (viewerDistance - z)
+            let top = y * near
+            y += cos(theta) * step
+            z += sin(theta) * step
+            let far = viewerDistance / (viewerDistance - z)
+            let slotShadow = -0.28 * exp(-start / 7) * (1 - min(1, max(0, relax)))
+            result.append(Slice(start: start, length: step, top: top, height: max(0.01, y * far - top + 0.6),
+                                scale: (near + far) / 2, shade: slotShadow + 0.07 * sin(theta)))
+        }
+        return result
+    }
+
+    /// Stiff paper held at the slot sags like a cantilever under its own weight:
+    /// the bend at each point grows with the cube of how much paper hangs beyond it.
+    private static func angle(at s: CGFloat, length: CGFloat) -> CGFloat {
+        let full = Layout.cardHeight
+        let sag = 3 * (exitAngle + 0.12) / (full * full * full)
+        let hanging = pow(length, 3) - pow(length - s, 3)
+        return max(-0.12, exitAngle - sag * hanging / 3)
     }
 }
 
-extension View {
-    func feedingFromSlot(_ progress: Double, flop: Double = 0) -> some View {
-        modifier(SlotFeed(progress: progress, flop: flop))
+@MainActor
+enum PrintSheet {
+    /// A still image of the print before it develops, for drawing it as it curls out of the slot.
+    static func render(_ shot: Shot) -> NSImage? {
+        let renderer = ImageRenderer(content: PolaroidView(shot: shot, develop: 0, shadowed: false))
+        renderer.scale = NSScreen.main?.backingScaleFactor ?? 2
+        return renderer.nsImage
     }
 }

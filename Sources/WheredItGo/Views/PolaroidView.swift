@@ -6,6 +6,7 @@ struct PolaroidView: View {
     var lifted = false
     /// Pointer position across the card (0...1) for a holographic glint, or nil for none.
     var sheen: Double?
+    var shadowed = true
 
     private let ink = Color(red: 0.16, green: 0.19, blue: 0.36)
 
@@ -39,8 +40,8 @@ struct PolaroidView: View {
         .frame(width: Layout.cardWidth, height: Layout.cardHeight, alignment: .top)
         .background(Paper())
         .clipShape(RoundedRectangle(cornerRadius: 2.5, style: .continuous))
-        .shadow(color: .black.opacity(0.2), radius: 1, y: 1)
-        .shadow(color: Color(red: 0.2, green: 0.1, blue: 0).opacity(lifted ? 0.34 : 0.24), radius: lifted ? 16 : 7, y: lifted ? 12 : 4)
+        .shadow(color: .black.opacity(shadowed ? 0.2 : 0), radius: 1, y: 1)
+        .shadow(color: Color(red: 0.2, green: 0.1, blue: 0).opacity(shadowed ? (lifted ? 0.34 : 0.24) : 0), radius: lifted ? 16 : 7, y: lifted ? 12 : 4)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(shot.accessibilityLabel)
         .accessibilityValue(shot.accessibilityText ?? "")

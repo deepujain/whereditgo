@@ -94,10 +94,10 @@ struct WelcomeView: View {
     private var hero: some View {
         ZStack(alignment: .top) {
             CameraView()
-            PolaroidView(shot: sample)
-                .feedingFromSlot(0.8)
-                .rotationEffect(.degrees(2), anchor: .top)
-                .padding(.top, CameraView.slotCenter)
+            if let sheet = PrintSheet.render(sample) {
+                CurlingPrint(sheet: sheet, progress: 0.8, relax: 0)
+                    .padding(.top, CameraView.slotCenter)
+            }
         }
         .frame(width: 200, height: 262, alignment: .top)
         .padding(.top, 6)

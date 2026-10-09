@@ -45,8 +45,10 @@ final class DeskModel {
     var cameraShown = false
     var flash = 0.0
     var eject = 0.0
-    /// Extra bend while a print slaps flat after leaving the slot.
-    var flop = 0.0
+    /// 0 while the rollers hold the print, 1 once it has dropped flat.
+    var relax = 0.0
+    /// A still of the undeveloped print, drawn while it curls out of the slot.
+    private(set) var feedSheet: NSImage?
     private(set) var motorRunning = false
     /// A brief confirmation shown under the pile, like “Copied”.
     private(set) var toast: Toast?
@@ -86,7 +88,7 @@ final class DeskModel {
     @ObservationIgnored private let log = Logger(subsystem: "app.whereditgo.mac", category: "desk")
 
     static let developDuration = 1.8
-    static let feedDuration = 0.85
+    static let feedDuration = 2.0
     static let maxShots = 40
 
     var visibleShots: [Shot] { Array(shots.prefix(pileSize)) }
@@ -266,25 +268,26 @@ final class DeskModel {
             try? await Task.sleep(for: .milliseconds(170))
         }
 
-        Sounds.shutter()
         withAnimation(.easeOut(duration: 0.05)) { flash = 1 }
         try? await Task.sleep(for: .milliseconds(50))
         withAnimation(.easeOut(duration: 0.5)) { flash = 0 }
 
         eject = 0
-        flop = 0
+        relax = 0
         developBonus = 0
-        developStart = Date().addingTimeInterval(0.1)
+        developStart = .distantFuture
+        feedSheet = PrintSheet.render(shot)
         printing = shot
-        try? await Task.sleep(for: .milliseconds(16))
+        try? await Task.sleep(for: .milliseconds(120))
         motorRunning = true
         Sounds.motor()
-        withAnimation(.timingCurve(0.3, 0.1, 0.45, 1, duration: Self.feedDuration)) { eject = 1 }
+        withAnimation(.timingCurve(0.2, 0.05, 0.8, 0.95, duration: Self.feedDuration)) { eject = 1 }
         try? await Task.sleep(for: .seconds(Self.feedDuration))
         motorRunning = false
-        withAnimation(.easeIn(duration: 0.08)) { flop = -10 }
-        try? await Task.sleep(for: .milliseconds(80))
-        withAnimation(.spring(duration: 0.5, bounce: 0.55)) { flop = 0 }
+        withAnimation(.spring(duration: 0.6, bounce: 0.45)) { relax = 1 }
+        try? await Task.sleep(for: .milliseconds(520))
+        feedSheet = nil
+        developStart = .now
         if developProgress(at: .now) < 0.6 {
             withAnimation(.easeOut(duration: 0.2)) { hintVisible = true }
         }
@@ -404,7 +407,7 @@ final class DeskModel {
     /// Wiggling the pointer over a developing print speeds it up, like shaking a Polaroid.
     private func shake(x: CGFloat) {
         defer { lastPointerX = x }
-        guard printing != nil, eject >= 1, let last = lastPointerX else { return }
+        guard printing != nil, feedSheet == nil, let last = lastPointerX else { return }
         let delta = x - last
         guard abs(delta) > 0.5 else { return }
         let direction: CGFloat = delta > 0 ? 1 : -1
@@ -554,8 +557,10 @@ extension DeskModel {
         self.sheen = sheen
     }
 
-    func stageFeed(_ progress: Double) {
+    func stageFeed(_ progress: Double, relax: Double = 0) {
         eject = progress
+        self.relax = relax
+        feedSheet = printing.flatMap(PrintSheet.render)
         motorRunning = progress < 1
         hintVisible = false
     }

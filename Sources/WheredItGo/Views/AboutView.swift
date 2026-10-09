@@ -6,7 +6,8 @@ struct AboutView: View {
     private let animated: Bool
 
     private let feedState: State<Double>
-    private let flopState = State(initialValue: 0.0)
+    private let relaxState = State(initialValue: 1.0)
+    private let sheetState = State<NSImage?>(initialValue: nil)
     private let flashState = State(initialValue: 0.0)
     private let developStartState: State<Date>
     private let frameState: State<Int>
@@ -14,7 +15,8 @@ struct AboutView: View {
     private let cardState = State(initialValue: Self.creditsCard(title: "made by 1xAI"))
 
     private var feed: Double { get { feedState.wrappedValue } nonmutating set { feedState.wrappedValue = newValue } }
-    private var flop: Double { get { flopState.wrappedValue } nonmutating set { flopState.wrappedValue = newValue } }
+    private var relax: Double { get { relaxState.wrappedValue } nonmutating set { relaxState.wrappedValue = newValue } }
+    private var sheet: NSImage? { get { sheetState.wrappedValue } nonmutating set { sheetState.wrappedValue = newValue } }
     private var flash: Double { get { flashState.wrappedValue } nonmutating set { flashState.wrappedValue = newValue } }
     private var developStart: Date { get { developStartState.wrappedValue } nonmutating set { developStartState.wrappedValue = newValue } }
     private var frame: Int { get { frameState.wrappedValue } nonmutating set { frameState.wrappedValue = newValue } }
@@ -96,13 +98,19 @@ struct AboutView: View {
             .help(Text("Take another"))
             .accessibilityLabel(Text("Take another picture"))
 
-            TimelineView(.animation(paused: feed < 1 && developStart == .distantFuture)) { context in
-                PolaroidView(shot: card, develop: min(1, max(0, context.date.timeIntervalSince(developStart) / 2.2)))
+            if let sheet {
+                CurlingPrint(sheet: sheet, progress: feed, relax: relax)
+                    .padding(.top, CameraView.slotCenter)
+                    .allowsHitTesting(false)
+            } else if feed > 0 {
+                TimelineView(.animation(paused: developStart == .distantFuture)) { context in
+                    PolaroidView(shot: card, develop: min(1, max(0, context.date.timeIntervalSince(developStart) / 2.2)))
+                }
+                .frame(width: Layout.cardWidth, height: Layout.cardHeight, alignment: .top)
+                .padding(.top, CameraView.slotCenter)
+                .transition(.opacity)
+                .allowsHitTesting(false)
             }
-            .feedingFromSlot(reduceMotion ? 1 : feed, flop: flop)
-            .rotationEffect(.degrees(frame.isMultiple(of: 2) ? -2 : 2.5), anchor: .top)
-            .padding(.top, CameraView.slotCenter)
-            .allowsHitTesting(false)
         }
     }
 
@@ -112,8 +120,8 @@ struct AboutView: View {
         Task {
             try? await Task.sleep(for: delay)
             if feed > 0 {
-                withAnimation(.easeIn(duration: 0.25)) { feed = 0 }
-                try? await Task.sleep(for: .milliseconds(260))
+                withAnimation(.easeIn(duration: 0.2)) { feed = 0 }
+                try? await Task.sleep(for: .milliseconds(240))
             }
             card = nextPrint()
             frame += 1
@@ -121,13 +129,21 @@ struct AboutView: View {
             withAnimation(.easeOut(duration: 0.05)) { flash = 1 }
             try? await Task.sleep(for: .milliseconds(60))
             withAnimation(.easeOut(duration: 0.5)) { flash = 0 }
-            developStart = Date().addingTimeInterval(0.3)
-            Sounds.motor()
-            withAnimation(.timingCurve(0.3, 0.1, 0.45, 1, duration: DeskModel.feedDuration)) { feed = 1 }
-            try? await Task.sleep(for: .seconds(DeskModel.feedDuration))
-            withAnimation(.easeIn(duration: 0.08)) { flop = -10 }
-            try? await Task.sleep(for: .milliseconds(80))
-            withAnimation(.spring(duration: 0.5, bounce: 0.55)) { flop = 0 }
+            developStart = .distantFuture
+            if reduceMotion {
+                withAnimation(.easeOut(duration: 0.3)) { feed = 1 }
+            } else {
+                relax = 0
+                sheet = PrintSheet.render(card)
+                try? await Task.sleep(for: .milliseconds(120))
+                Sounds.motor()
+                withAnimation(.timingCurve(0.2, 0.05, 0.8, 0.95, duration: DeskModel.feedDuration)) { feed = 1 }
+                try? await Task.sleep(for: .seconds(DeskModel.feedDuration))
+                withAnimation(.spring(duration: 0.6, bounce: 0.45)) { relax = 1 }
+                try? await Task.sleep(for: .milliseconds(520))
+                sheet = nil
+            }
+            developStart = .now
             busy = false
         }
     }

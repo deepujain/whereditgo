@@ -9,18 +9,19 @@ enum Sounds {
         NSSound(contentsOfFile: "\(systemSounds)/ink/InkSoundStroke\($0).aif", byReference: true)
     }
     private static let poofSound = NSSound(contentsOfFile: "\(systemSounds)/dock/poof item off dock.aif", byReference: true)
-    private static let shutterSound = Synth.shutter()
-    private static let motorSound = Synth.motor()
+    private static let shutterSound = NSSound(contentsOfFile: "\(systemSounds)/system/Shutter.aif", byReference: true)
+    private static let feedSound = Synth.paperFeed(length: DeskModel.feedDuration)
 
     private static var enabled: Bool { UserDefaults.standard.bool(forKey: Prefs.playSounds) }
 
+    /// Only for pictures the app takes itself; macOS already plays a shutter for screenshots.
     static func shutter() {
-        play(shutterSound, volume: 0.55)
+        play(shutterSound, volume: 0.5)
     }
 
-    /// The whir of the rollers pushing a print out of the slot.
+    /// A soft hush of paper sliding through the rollers.
     static func motor() {
-        play(motorSound, volume: 0.32)
+        play(feedSound, volume: 0.22)
     }
 
     static func landing() {
@@ -55,35 +56,18 @@ enum Sounds {
 
 /// Builds short mono WAV clips from a sample function.
 private enum Synth {
-    static let duration = 0.9
-
-    static func shutter() -> NSSound? {
+    /// Band-limited noise with a slow swell: no tone, so it reads as paper rather than a buzzer.
+    static func paperFeed(length: Double) -> NSSound? {
         var noise = Noise()
-        return clip(seconds: 0.2) { t in
-            var s = noise.next() * exp(-t / 0.003) * 0.7
-            let thunk = t - 0.03
-            if thunk > 0 {
-                s += sin(2 * .pi * 92 * thunk) * exp(-thunk / 0.035) * 0.8
-                s += noise.next() * exp(-thunk / 0.005) * 0.45
-            }
-            let reset = t - 0.1
-            if reset > 0 { s += noise.next() * exp(-reset / 0.004) * 0.3 }
-            return s
-        }
-    }
-
-    static func motor() -> NSSound? {
-        var noise = Noise()
-        var phase = 0.0, low = 0.0
-        let length = duration
+        var low = 0.0, lower = 0.0
         return clip(seconds: length) { t in
-            let envelope = min(1, t / 0.05) * min(1, max(0, length - t) / 0.12)
-            let frequency = 118 + 10 * sin(2 * .pi * 3 * t)
-            phase += frequency / Self.rate
-            let saw = 2 * (phase - floor(phase)) - 1
-            low += 0.12 * ((saw + noise.next() * 0.5) - low)
-            let rollerTick = (t * 26).truncatingRemainder(dividingBy: 1) < 0.06 ? noise.next() * 0.18 : 0
-            return (low * 0.9 + sin(2 * .pi * frequency * 2 * t) * 0.12 + rollerTick) * envelope
+            let envelope = min(1, t / 0.25) * min(1, max(0, length - t) / 0.35)
+            let white = noise.next()
+            low += 0.18 * (white - low)
+            lower += 0.03 * (low - lower)
+            let band = low - lower
+            let texture = 0.85 + 0.15 * sin(2 * .pi * 7 * t)
+            return band * texture * envelope * 1.6
         }
     }
 
