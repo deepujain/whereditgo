@@ -21,32 +21,27 @@ You take a screenshot, the little preview vanishes before you can drag it anywhe
 **Where’d It Go?** keeps today’s screenshots right where you can grab them. Each new screenshot is printed by an instant camera in the corner of your screen, develops like a Polaroid, and drops onto a pile. Drag any print straight into Slack, Mail, Figma, or Finder.
 
 <p align="center">
-  <img src="docs/images/1-printing.png" width="220" alt="A new screenshot printing out of the camera">
-  &nbsp;&nbsp;
-  <img src="docs/images/2-pile.png" width="240" alt="The pile of today’s screenshots">
+  <img src="docs/images/0-hero.png" width="560" alt="A new screenshot curling out of the camera’s slot, next to the pile of today’s prints">
 </p>
 
 ## Features
 
-- **Prints like real instant film.** Every new screenshot feeds out of the camera’s slot, curling toward you as it sags under its own weight, then drops flat and develops. Wiggle the pointer over it to develop faster, like shaking a Polaroid.
-- **A camera with a little personality.** While it prints, the lens follows your pointer around the screen, and it gives a happy hop when a print lands.
-- **A pile you can fan out.** Hover the pile and it spreads into a hand of cards, newest first. The card under your pointer lifts, tilts toward you, and catches a foil-like shine as you move across it.
-- **Quick actions.** The lifted print shows buttons to copy the picture, copy its text, open it, or show it in Finder. Drag a print into any app, double-click to open it, or right-click to remove it or move it to the Trash.
-- **Handwritten captions and Copy Text.** On-device text recognition captions each print with its most prominent words and lets you copy all the text in it. Nothing leaves your Mac.
-- **Your day in the menu bar.** The menu bar panel shows today’s prints as a contact sheet grouped into morning, afternoon, and evening. Click a print to open it or drag it out. Round switches turn on instant prints, auto copy, Desktop tidying, sounds, and keeping the pile on screen.
+### Printing
+
+- **Prints like real instant film.** Take a screenshot and the camera pops up in the corner. The print feeds out of the slot over a couple of seconds, curling toward you as it sags under its own weight, then drops flat and starts to develop.
+- **Shake it.** Wiggle the pointer over a developing print to speed it up, like shaking a Polaroid. You can also drag it away before it’s done.
+- **A camera with a little personality.** The lens follows your pointer around the screen, and the camera gives a happy hop when a print lands.
+- **Handwritten captions.** On-device text recognition writes each print’s most prominent words on it, so you can tell prints apart at a glance. Nothing leaves your Mac.
+
+### The pile
+
+- **Fan it out.** Hover the pile and it spreads into a hand of cards, newest first. The card under your pointer lifts, tilts toward you, and catches a foil-like shine as you move across it.
+- **Controls on the print.** The lifted print shows four buttons: **Copy Picture**, **Copy Text** (every line of text recognized in the screenshot), **Open**, and **Show in Finder**. A small “Picture copied” or “Text copied” note confirms under the pile.
+- **Drag, click, right-click.** Drag a print into any app, double-click to open it, or right-click for the same actions plus **Remove from Pile** and **Move to Trash**.
 - **Sweep it away.** Hover the pile and click **Sweep** to flick every print off with a swish and a poof. Changed your mind? **Undo** puts them back. Your files are never touched.
-- **Pick your corner.** In Settings, click a corner of a tiny Mac screen to send the pile there.
-- **Respects your setup.** Follows the screenshot location you chose in the Screenshot app and supports launch at login. With Reduce Motion on, prints fade instead of flying. VoiceOver reads each print’s caption and the text inside it.
-- **Optional tidying.** Copy each screenshot to the clipboard, or move screenshots off your Desktop into `Pictures/Where’d It Go/<date>`.
 
 <p align="center">
-  <img src="docs/images/3-fan-holo.png" width="760" alt="The pile fanned out, with quick actions on the lifted print">
-</p>
-
-<p align="center">
-  <img src="docs/images/10-menu.png" width="344" alt="The menu bar panel with today’s prints and quick switches">
-  &nbsp;&nbsp;
-  <img src="docs/images/11-about.png" width="250" alt="The About window, where the camera prints its own credits">
+  <img src="docs/images/3-fan-holo.png" width="760" alt="The pile fanned out, with Copy Picture, Copy Text, Open, and Show in Finder buttons on the lifted print">
 </p>
 
 <p align="center">
@@ -57,8 +52,30 @@ You take a screenshot, the little preview vanishes before you can drag it anywhe
   <img src="docs/images/8-undo.png" width="220" alt="Undo after sweeping">
 </p>
 
+### Menu bar
+
+Click the photo-stack icon in the menu bar to open a small panel:
+
+- **Today’s contact sheet.** Today’s prints as mini Polaroids, grouped into morning, afternoon, and evening. Click one to open it, drag it into any app, or right-click to copy it, copy its text, or show it in Finder. With nothing printed yet, the panel shows the screenshot shortcuts instead.
+- **Quick switches.** Round toggles for **On Screen** (keep the pile visible), **Instant** (skip the five-second macOS thumbnail delay), **Auto Copy** (put every new screenshot on the clipboard), **Tidy** (file screenshots under `Pictures/Where’d It Go/<date>`), and **Sounds**.
+- **Everything else, one click away.** Open the screenshots folder, sweep the pile, replay the welcome tour, and open About, Settings, or Quit.
+
+<p align="center">
+  <img src="docs/images/10-menu.png" width="344" alt="The menu bar panel with today’s prints, quick switches, and footer buttons">
+</p>
+
+### Settings and About
+
+- **Pick your corner.** Click a corner of a tiny Mac screen to send the pile there, and watch the pile’s size change as you adjust it.
+- **About, printed.** The About window’s camera prints its own credits. Click the camera to take another, and it reprints your recent screenshots.
+- **Respects your setup.** Follows the screenshot location you chose in the Screenshot app and supports launch at login. Sounds are subtle and can be turned off. With Reduce Motion on, prints fade in instead of feeding out. VoiceOver reads each print’s caption and the text inside it.
+
 <p align="center">
   <img src="docs/images/12-corner-picker.png" width="430" alt="Choosing the pile’s corner in Settings">
+</p>
+
+<p align="center">
+  <img src="docs/images/11-about.png" width="300" alt="The About window, where the camera prints its own credits">
 </p>
 
 ## Install
@@ -67,9 +84,9 @@ You take a screenshot, the little preview vanishes before you can drag it anywhe
 2. Open the zip and drag **Where’d It Go.app** into your **Applications** folder.
 3. Open it. The app isn’t notarized by Apple yet, so the first time macOS says it can’t verify the developer. Open **System Settings › Privacy & Security**, scroll down, and click **Open Anyway**. You only need to do this once.
 
-A photo-stack icon appears in the menu bar. macOS then asks for permission to read your Desktop (or wherever your screenshots are saved). That’s the only access it needs.
+A photo-stack icon appears in the menu bar; click it to see today’s prints and switches. macOS then asks for permission to read your Desktop (or wherever your screenshots are saved). That’s the only access it needs.
 
-**Tip:** macOS holds each screenshot back for about five seconds while it shows its own floating thumbnail. Turn that off in the welcome tour or in **Settings › Speed** so prints appear instantly.
+**Tip:** macOS holds each screenshot back for about five seconds while it shows its own floating thumbnail. Turn on the **Instant** switch in the menu bar panel (or use the welcome tour or **Settings › Speed**) so prints appear right away.
 
 ## Build from source
 

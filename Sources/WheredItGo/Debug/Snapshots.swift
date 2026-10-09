@@ -37,6 +37,20 @@ enum Snapshots {
 
         model.stage(shots: Array(shots.dropFirst()), printing: shots.first, develop: 0, expanded: false, hint: false)
         model.stageFeed(0.85)
+        let namespace = Namespace().wrappedValue
+        try write(AnyView(
+            HStack(alignment: .bottom, spacing: 36) {
+                PrintStation(model: model, namespace: namespace)
+                    .frame(width: Layout.stationSize.width, height: Layout.stationSize.height)
+                PileView(model: model, namespace: namespace)
+                    .frame(width: Layout.pileSize.width, height: Layout.pileSize.height)
+            }
+            .padding(.horizontal, 44)
+            .padding(.vertical, 28)
+            .background(LinearGradient(colors: [Color(red: 0.36, green: 0.42, blue: 0.62), Color(red: 0.82, green: 0.6, blue: 0.55)],
+                                       startPoint: .top, endPoint: .bottom))
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        ), to: folder.appending(path: "0-hero.png"))
         try write(scene(model, size: CGSize(width: Layout.pileSize.width, height: Layout.pileSize.height + Layout.stationSize.height)),
                   to: folder.appending(path: "1-printing-feed.png"))
 
