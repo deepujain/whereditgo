@@ -17,6 +17,11 @@ struct WheredItGoApp: App {
             }
         }
         #if DEBUG
+        if let flag = arguments.firstIndex(of: "--read-text"), arguments.indices.contains(flag + 1) {
+            let reading = ShotImaging.read(URL(fileURLWithPath: arguments[flag + 1]))
+            print("Caption: \(reading?.headline ?? "none")\n---\n\(reading?.text ?? "no text found")")
+            exit(0)
+        }
         if let flag = arguments.firstIndex(of: "--snapshots"), arguments.indices.contains(flag + 1) {
             let images = arguments.dropFirst(flag + 2).map { URL(fileURLWithPath: $0) }
             do {

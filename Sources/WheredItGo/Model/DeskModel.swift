@@ -122,8 +122,8 @@ final class DeskModel {
     private func scan(initial: Bool) {
         let folder = folderURL
         Task {
-            let found = await Task.detached(priority: .userInitiated) { ScreenshotFolder.screenshots(in: folder) }.value
-            folderReadable = await Task.detached { ScreenshotFolder.isReadable(folder) }.value
+            let found = await Work.run(on: Work.scanning) { ScreenshotFolder.screenshots(in: folder) }
+            folderReadable = await Work.run(on: Work.scanning) { ScreenshotFolder.isReadable(folder) }
             ingest(found, initial: initial)
         }
     }
@@ -164,7 +164,7 @@ final class DeskModel {
         Task {
             // The picture is ready before the camera fires, so the print never comes out blank.
             await loadImage(shot)
-            readText(shot)
+            readText(shot, on: Work.readingNew)
             queue.append(shot)
             if !presenting { await drainQueue() }
         }
@@ -173,22 +173,22 @@ final class DeskModel {
     private func load(_ shot: Shot) {
         Task {
             await loadImage(shot)
-            readText(shot)
+            readText(shot, on: Work.readingBacklog)
         }
     }
 
     private func loadImage(_ shot: Shot) async {
         let url = shot.url
-        if let thumbnail = await Task.detached(priority: .userInitiated, operation: { ShotImaging.thumbnail(url, maxPixel: 720) }).value {
+        if let thumbnail = await Work.run(on: Work.imaging, { ShotImaging.thumbnail(url, maxPixel: 720) }) {
             shot.image = NSImage(cgImage: thumbnail.cgImage, size: .zero)
         }
     }
 
-    private func readText(_ shot: Shot) {
+    private func readText(_ shot: Shot, on queue: DispatchQueue) {
         let url = shot.url
         let smart = defaults.bool(forKey: Prefs.smartCaptions)
         Task {
-            guard let reading = await Task.detached(priority: .utility, operation: { ShotImaging.read(url) }).value else { return }
+            guard let reading = await Work.run(on: queue, { ShotImaging.read(url) }) else { return }
             shot.text = reading.text
             if smart, let headline = reading.headline {
                 withAnimation(.easeInOut(duration: 0.4)) { shot.title = headline }
@@ -514,3 +514,18 @@ extension DeskModel {
     }
 }
 #endif
+
+/// Dedicated queues keep folder scans from waiting behind text recognition,
+/// which can take seconds per image and would otherwise fill the shared thread pool.
+private enum Work {
+    static let scanning = DispatchQueue(label: "app.whereditgo.scanning", qos: .userInteractive)
+    static let imaging = DispatchQueue(label: "app.whereditgo.imaging", qos: .userInitiated, attributes: .concurrent)
+    static let readingNew = DispatchQueue(label: "app.whereditgo.reading-new", qos: .userInitiated)
+    static let readingBacklog = DispatchQueue(label: "app.whereditgo.reading-backlog", qos: .background)
+
+    static func run<T: Sendable>(on queue: DispatchQueue, _ work: @escaping @Sendable () -> T) async -> T {
+        await withCheckedContinuation { continuation in
+            queue.async { continuation.resume(returning: work()) }
+        }
+    }
+}
