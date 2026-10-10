@@ -60,13 +60,14 @@ struct PolaroidView: View {
                 SamplePhoto()
             }
         }
-        .blur(radius: fog * 9, opaque: true)
-        .saturation(0.15 + 0.85 * develop)
-        .brightness(-0.3 * fog)
+        // Undeveloped, the picture is already there under a milky haze, pale and soft, and clears.
+        .blur(radius: fog * 1.5, opaque: true)
+        .saturation(0.2 + 0.8 * develop)
+        .contrast(1 - 0.35 * fog)
         .overlay {
-            RadialGradient(colors: [Color(red: 0.24, green: 0.28, blue: 0.33), Color(red: 0.07, green: 0.09, blue: 0.13)],
+            RadialGradient(colors: [Color(red: 0.9, green: 0.9, blue: 0.88), Color(red: 0.76, green: 0.79, blue: 0.82)],
                            center: UnitPoint(x: 0.4, y: 0.35), startRadius: 0, endRadius: 110)
-                .opacity(fog * 0.95)
+                .opacity(fog * 0.55)
         }
         .overlay {
             LinearGradient(colors: [.white.opacity(0.22), .white.opacity(0)], startPoint: .topLeading, endPoint: UnitPoint(x: 0.45, y: 0.55))
