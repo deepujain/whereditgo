@@ -109,5 +109,7 @@ final class DeskPanelController {
         panel.setFrame(frame, display: true)
         model.panelFrame = frame
         panel.orderFrontRegardless()
+        // A window that shrinks out from under the pointer gets no mouse-exited event.
+        if model.pointerInside, !frame.contains(NSEvent.mouseLocation) { model.pointerHovering(false) }
     }
 }

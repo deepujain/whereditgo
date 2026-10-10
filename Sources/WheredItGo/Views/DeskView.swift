@@ -54,12 +54,31 @@ struct PrintStation: View {
                 .rotationEffect(.degrees(model.wiggle), anchor: .top)
                 .frame(width: Layout.cardWidth, height: Layout.cardHeight, alignment: .top)
                 .padding(.top, Layout.slotY)
-                .onDrag { model.dragProvider(for: shot) }
-                .help(Text("Wiggle the pointer to develop faster, or drag it out right away."))
+                .allowsHitTesting(false)
+            }
+
+            // One grab area for the print's whole life, so a drag begun while it ejects survives the
+            // hand-over to the developing print. Only paper already out of the slot can be grabbed.
+            if let shot = model.printing {
+                Color.clear
+                    .frame(width: Layout.cardWidth,
+                           height: max(1, Layout.cardHeight * (model.feedSheet == nil ? 1 : model.eject)), alignment: .top)
+                    .contentShape(Rectangle())
+                    .onDrag {
+                        model.dragProvider(for: shot)
+                    } preview: {
+                        PolaroidView(shot: shot, develop: 0.4, lifted: true).rotationEffect(.degrees(-3))
+                    }
+                    .frame(width: Layout.cardWidth, height: Layout.cardHeight, alignment: .top)
+                    .padding(.top, Layout.slotY)
+                    .id(shot.id)
+                    .accessibilityElement()
+                    .accessibilityLabel(Text("Printing screenshot"))
+                    .accessibilityHint(Text("Drag to drop the screenshot into another app. It develops on its own."))
             }
 
             if model.hintVisible {
-                Label("Wiggle to develop", systemImage: "hand.wave.fill")
+                Label("Wiggle to develop faster", systemImage: "hand.wave.fill")
                     .font(.caption.weight(.semibold))
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)

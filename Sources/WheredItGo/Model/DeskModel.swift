@@ -344,7 +344,10 @@ final class DeskModel {
         tuckTask?.cancel()
         tuckTask = Task {
             try? await Task.sleep(for: delay)
-            guard !Task.isCancelled, !pointerInside, !presenting, !cameraInPanel, !sweeping, sweptCount == 0,
+            guard !Task.isCancelled else { return }
+            // Hover can go stale when a drag carries the pointer out; trust where it really is.
+            if pointerInside, !panelFrame.contains(NSEvent.mouseLocation) { return pointerHovering(false) }
+            guard !pointerInside, !presenting, !cameraInPanel, !sweeping, sweptCount == 0,
                   !pileExpanded, !shots.isEmpty else { return }
             withAnimation(.spring(duration: 0.45, bounce: 0.15)) { tucked = true }
             try? await Task.sleep(for: .milliseconds(450))
