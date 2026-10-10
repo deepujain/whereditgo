@@ -19,6 +19,12 @@ struct MenuContent: View {
 
     /// Room for two time-of-day rows of prints, or two rows under one heading; more scrolls.
     private static let sheetHeight: CGFloat = 212
+    #if DEBUG
+    /// Snapshots can't draw a scroll view's contents.
+    static var drawsFlat = false
+    #else
+    private static let drawsFlat = false
+    #endif
 
     private var today: [Shot] {
         model.shots.filter { Calendar.current.isDateInToday($0.date) }
@@ -37,6 +43,8 @@ struct MenuContent: View {
                     accessNeeded
                 } else if today.isEmpty {
                     emptyState
+                } else if Self.drawsFlat {
+                    contactSheet.frame(maxHeight: .infinity, alignment: .top)
                 } else {
                     ScrollView { contactSheet }
                         .scrollIndicators(.automatic)
@@ -99,9 +107,14 @@ struct MenuContent: View {
                             .tracking(0.8)
                             .foregroundStyle(.tertiary)
                             .padding(.leading, 4)
-                        LazyVGrid(columns: Array(repeating: GridItem(.fixed(74), spacing: 6), count: 4), alignment: .leading, spacing: 8) {
-                            ForEach(Array(shots.enumerated()), id: \.element.id) { index, shot in
-                                MiniPrint(shot: shot, model: model, tilt: index.isMultiple(of: 2) ? -1.6 : 1.4, close: closeMenu)
+                        Grid(alignment: .leading, horizontalSpacing: 6, verticalSpacing: 8) {
+                            ForEach(Array(stride(from: 0, to: shots.count, by: 4)), id: \.self) { start in
+                                GridRow {
+                                    ForEach(start..<min(start + 4, shots.count), id: \.self) { index in
+                                        MiniPrint(shot: shots[index], model: model, tilt: index.isMultiple(of: 2) ? -1.6 : 1.4, close: closeMenu)
+                                            .frame(width: 74)
+                                    }
+                                }
                             }
                         }
                     }

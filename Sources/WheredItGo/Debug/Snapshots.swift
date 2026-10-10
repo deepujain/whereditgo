@@ -114,8 +114,10 @@ enum Snapshots {
         try write(AnyView(MenuContent(model: model, showWelcome: {}, showAbout: {}).background(.regularMaterial)),
                   to: folder.appending(path: "10-menu-empty.png"))
         model.stage(shots: shots, printing: nil, develop: 1, expanded: false, hint: false)
+        MenuContent.drawsFlat = true
         try write(AnyView(MenuContent(model: model, showWelcome: {}, showAbout: {}).background(.regularMaterial)),
                   to: folder.appending(path: "10-menu.png"))
+        MenuContent.drawsFlat = false
         try write(AnyView(AboutView(model: model, animated: false).background(Color(nsColor: .windowBackgroundColor))),
                   to: folder.appending(path: "11-about.png"))
         try write(AnyView(HStack(spacing: 20) {

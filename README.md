@@ -18,7 +18,7 @@
 
 You take a screenshot, the little preview vanishes before you can drag it anywhere, and the file lands somewhere on a Desktop full of `Screenshot 2026-10-08 at 5.41.12 PM.png`. Which one was it?
 
-**Where’d It Go?** keeps today’s screenshots right where you can grab them. Each new screenshot is printed by an instant camera in the corner of your screen, develops like a Polaroid, and drops onto a pile. Drag any print straight into Slack, Mail, Figma, or Finder.
+**Where’d It Go?** keeps today’s screenshots right where you can grab them. Each new screenshot is printed by an instant camera in the corner of your screen, develops like instant film, and drops onto a pile. Drag any print straight into Slack, Mail, Figma, or Finder.
 
 <p align="center">
   <img src="docs/images/0-hero.png" width="560" alt="A new screenshot curling out of the camera’s slot, next to the pile of today’s prints">
@@ -29,7 +29,7 @@ You take a screenshot, the little preview vanishes before you can drag it anywhe
 ### Printing
 
 - **Prints like real instant film.** Take a screenshot and the camera pops up in the corner. The print feeds out of the slot over a couple of seconds, curling toward you as it sags under its own weight, then drops flat and starts to develop.
-- **Shake it.** Wiggle the pointer over a developing print to speed it up, like shaking a Polaroid. You can also drag it away before it’s done.
+- **Shake it.** Wiggle the pointer over a developing print to speed it up, like shaking an instant photo. You can also drag it away before it’s done.
 - **A camera with a little personality.** The lens follows your pointer around the screen, and the camera gives a happy hop when a print lands.
 - **Handwritten captions.** On-device text recognition writes each print’s most prominent words on it, so you can tell prints apart at a glance. Nothing leaves your Mac.
 
@@ -56,7 +56,7 @@ You take a screenshot, the little preview vanishes before you can drag it anywhe
 
 Click the photo-stack icon in the menu bar to open a small panel:
 
-- **Today’s contact sheet.** Today’s prints as mini Polaroids, grouped into morning, afternoon, and evening. Click one to open it, drag it into any app, or right-click to copy it, copy its text, or show it in Finder. With nothing printed yet, the panel shows the screenshot shortcuts instead.
+- **Today’s contact sheet.** Today’s prints as mini instant photos, grouped into morning, afternoon, and evening. Click one to open it, drag it into any app, or right-click to copy it, copy its text, or show it in Finder. With nothing printed yet, the panel shows the screenshot shortcuts instead.
 - **Quick switches.** Round toggles for **On Screen** (keep the pile visible), **Instant** (skip the five-second macOS thumbnail delay), **Auto Copy** (put every new screenshot on the clipboard), **Tidy** (file screenshots under `Pictures/Where’d It Go/<date>`), and **Sounds**.
 - **Everything else, one click away.** Open the screenshots folder, sweep the pile, replay the welcome tour, and open About, Settings, or Quit.
 
@@ -129,7 +129,7 @@ Upload `build/WheredItGo.pkg` with Apple’s Transporter app.
 Sources/WheredItGo/
   App/       App entry point, the floating panel, the app icon artwork
   Model/     The desk model (watching, printing, the pile) and screenshot items
-  Views/     Camera, Polaroid, pile, menu, settings, and welcome views
+  Views/     Camera, print, pile, menu, settings, and welcome views
   Support/   Preferences, screenshot folder helpers, and sounds
   Debug/     Debug-only snapshot renderer for reviewing the UI
 Resources/   Info.plist, entitlements, privacy manifest, and the camera photo

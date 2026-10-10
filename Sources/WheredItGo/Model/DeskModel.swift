@@ -451,7 +451,7 @@ final class DeskModel {
         return CGSize(width: dx / distance * reach, height: dy / distance * reach)
     }
 
-    /// Wiggling the pointer over a developing print speeds it up, like shaking a Polaroid.
+    /// Wiggling the pointer over a developing print speeds it up, like shaking an instant photo.
     private func shake(x: CGFloat) {
         defer { lastPointerX = x }
         guard printing != nil, feedSheet == nil, let last = lastPointerX else { return }
