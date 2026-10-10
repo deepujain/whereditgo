@@ -33,7 +33,9 @@ struct MenuContent: View {
 
             // A fixed height: the menu bar window keeps the size it first opened at, so content that grows gets cropped.
             Group {
-                if today.isEmpty {
+                if !model.folderReadable {
+                    accessNeeded
+                } else if today.isEmpty {
                     emptyState
                 } else {
                     ScrollView { contactSheet }
@@ -121,6 +123,31 @@ struct MenuContent: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    private var accessNeeded: some View {
+        VStack(spacing: 10) {
+            Image(systemName: "folder.badge.questionmark")
+                .font(.system(size: 28))
+                .foregroundStyle(.secondary)
+            Text("Allow access to \(model.folderURL.lastPathComponent)")
+                .font(.system(.subheadline, design: .rounded).weight(.semibold))
+            Text("Where’d It Go? prints the screenshots macOS saves there.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+            Button("Allow Access…") {
+                closeMenu()
+                if FolderAccess.isSandboxed {
+                    model.grantAccess()
+                } else {
+                    NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_FilesAndFolders")!)
+                }
+            }
+            .controlSize(.small)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
     private var emptyState: some View {
         VStack(spacing: 10) {
             Text("Nothing printed yet today")
@@ -143,10 +170,16 @@ struct MenuContent: View {
             QuickSwitch(symbol: "bolt.fill", title: "Instant", isOn: Binding(
                 get: { instant },
                 set: { on in
+                    guard ScreenshotFolder.canChangeFloatingThumbnail else {
+                        closeMenu()
+                        return ScreenshotFolder.openScreenshotOptions()
+                    }
                     ScreenshotFolder.setShowsFloatingThumbnail(!on)
                     instant = on
                 }
-            ), help: "Turns off the macOS floating thumbnail, which holds each screenshot back for about five seconds.")
+            ), help: ScreenshotFolder.canChangeFloatingThumbnail
+                ? "Turns off the macOS floating thumbnail, which holds each screenshot back for about five seconds."
+                : "Prints arrive instantly when the macOS floating thumbnail is off. Opens Screenshot, where Options has Show Floating Thumbnail.")
             QuickSwitch(symbol: "doc.on.clipboard.fill", title: "Auto Copy", isOn: $copyToClipboard,
                         help: "Copy every new screenshot to the clipboard.")
             QuickSwitch(symbol: "tray.full.fill", title: "Tidy", isOn: $tidyDesktop,

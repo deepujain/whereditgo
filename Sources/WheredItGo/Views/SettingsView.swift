@@ -65,7 +65,8 @@ struct SettingsView: View {
             Section("Screenshots") {
                 LabeledContent("Watching") {
                     HStack {
-                        Text(model.folderURL.path(percentEncoded: false).replacingOccurrences(of: NSHomeDirectory(), with: "~"))
+                        Text(model.folderURL.path(percentEncoded: false)
+                            .replacingOccurrences(of: ScreenshotFolder.home.path(percentEncoded: false), with: "~/"))
                             .foregroundStyle(.secondary)
                             .truncationMode(.middle)
                         Button("Change…") {
@@ -75,9 +76,19 @@ struct SettingsView: View {
                     }
                 }
                 if !model.folderReadable {
-                    Label("Allow access to this folder in System Settings › Privacy & Security › Files and Folders.",
-                          systemImage: "exclamationmark.triangle.fill")
-                        .font(.caption).foregroundStyle(.orange)
+                    if FolderAccess.isSandboxed {
+                        HStack {
+                            Label("Where’d It Go? needs your permission to read this folder.",
+                                  systemImage: "exclamationmark.triangle.fill")
+                                .font(.caption).foregroundStyle(.orange)
+                            Spacer()
+                            Button("Allow Access…") { model.grantAccess() }
+                        }
+                    } else {
+                        Label("Allow access to this folder in System Settings › Privacy & Security › Files and Folders.",
+                              systemImage: "exclamationmark.triangle.fill")
+                            .font(.caption).foregroundStyle(.orange)
+                    }
                 }
                 Toggle("Handwrite captions from the screenshot’s text", isOn: $smartCaptions)
                 Toggle("Copy each new screenshot to the clipboard", isOn: $copyToClipboard)
@@ -87,15 +98,26 @@ struct SettingsView: View {
             }
 
             Section("Speed") {
-                Toggle("Show the macOS floating thumbnail", isOn: Binding(
-                    get: { floatingThumbnail },
-                    set: { show in
-                        ScreenshotFolder.setShowsFloatingThumbnail(show)
-                        floatingThumbnail = show
+                if ScreenshotFolder.canChangeFloatingThumbnail {
+                    Toggle("Show the macOS floating thumbnail", isOn: Binding(
+                        get: { floatingThumbnail },
+                        set: { show in
+                            ScreenshotFolder.setShowsFloatingThumbnail(show)
+                            floatingThumbnail = show
+                        }
+                    ))
+                    Text("While the thumbnail is showing, macOS waits about five seconds before saving, so prints arrive late. Turn it off for instant prints.")
+                        .font(.caption).foregroundStyle(.secondary)
+                } else {
+                    LabeledContent("macOS floating thumbnail") {
+                        HStack {
+                            Text(floatingThumbnail ? "On" : "Off").foregroundStyle(.secondary)
+                            Button("Open Screenshot…") { ScreenshotFolder.openScreenshotOptions() }
+                        }
                     }
-                ))
-                Text("While the thumbnail is showing, macOS waits about five seconds before saving, so prints arrive late. Turn it off for instant prints.")
-                    .font(.caption).foregroundStyle(.secondary)
+                    Text("While the thumbnail is showing, macOS waits about five seconds before saving, so prints arrive late. For instant prints, open Options in Screenshot and turn off Show Floating Thumbnail.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
             }
 
             Section {
@@ -127,6 +149,9 @@ struct SettingsView: View {
         .fixedSize(horizontal: false, vertical: true)
         .onAppear {
             NSApp.activate()
+            floatingThumbnail = ScreenshotFolder.showsFloatingThumbnail
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             floatingThumbnail = ScreenshotFolder.showsFloatingThumbnail
         }
     }

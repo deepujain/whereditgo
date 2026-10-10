@@ -1,4 +1,4 @@
-import Foundation
+import AppKit
 
 struct FoundShot: Sendable {
     let url: URL
@@ -18,18 +18,27 @@ enum ScreenshotFolder {
         #endif
         let defaults = UserDefaults(suiteName: domain)
         if let path = defaults?.string(forKey: "location"), !path.isEmpty {
-            let url = URL(fileURLWithPath: (path as NSString).expandingTildeInPath, isDirectory: true)
+            let url = path.hasPrefix("~")
+                ? home.appending(path: String(path.dropFirst()), directoryHint: .isDirectory)
+                : URL(fileURLWithPath: path, isDirectory: true)
             var isDirectory: ObjCBool = false
             if FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory), isDirectory.boolValue {
                 return url
             }
         }
-        return FileManager.default.homeDirectoryForCurrentUser.appending(path: "Desktop", directoryHint: .isDirectory)
+        return home.appending(path: "Desktop", directoryHint: .isDirectory)
+    }
+
+    /// The user's real home folder. In the App Sandbox, `NSHomeDirectory()` is the app's container.
+    static var home: URL {
+        guard let entry = getpwuid(getuid()), let directory = entry.pointee.pw_dir else {
+            return FileManager.default.homeDirectoryForCurrentUser
+        }
+        return URL(fileURLWithPath: String(cString: directory), isDirectory: true)
     }
 
     static var archiveRoot: URL {
-        FileManager.default.urls(for: .picturesDirectory, in: .userDomainMask)[0]
-            .appending(path: "Where’d It Go", directoryHint: .isDirectory)
+        home.appending(path: "Pictures/Where’d It Go", directoryHint: .isDirectory)
     }
 
     /// macOS holds the file back while its floating thumbnail is on screen.
@@ -37,7 +46,16 @@ enum ScreenshotFolder {
         UserDefaults(suiteName: domain)?.object(forKey: "show-thumbnail") as? Bool ?? true
     }
 
+    /// A sandboxed app can read the Screenshot app's settings but not change them.
+    static var canChangeFloatingThumbnail: Bool { !FolderAccess.isSandboxed }
+
+    /// Opens the Screenshot app, whose Options menu has Show Floating Thumbnail.
+    static func openScreenshotOptions() {
+        NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Utilities/Screenshot.app"))
+    }
+
     static func setShowsFloatingThumbnail(_ show: Bool) {
+        guard canChangeFloatingThumbnail else { return openScreenshotOptions() }
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/defaults")
         process.arguments = ["write", domain, "show-thumbnail", "-bool", show ? "true" : "false"]

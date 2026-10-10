@@ -117,7 +117,14 @@ final class DeskModel {
         NotificationCenter.default.addObserver(forName: UserDefaults.didChangeNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.reloadPrefs() }
         }
+        FolderAccess.restore()
         watch(ScreenshotFolder.current, initial: true)
+    }
+
+    /// In the App Sandbox, asks the user to choose the screenshot folder, then watches it.
+    func grantAccess() {
+        guard let folder = FolderAccess.request(folderURL) else { return }
+        watch(folder, initial: true)
     }
 
     /// Picks up a new screenshot location chosen in the Screenshot app.

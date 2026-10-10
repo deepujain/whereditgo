@@ -42,16 +42,28 @@ struct WelcomeView: View {
             VStack(alignment: .leading, spacing: 16) {
                 step(symbol: "folder.fill", tint: .blue,
                      title: "Watching \(model.folderURL.lastPathComponent)",
-                     detail: "Where macOS saves your screenshots. You can change it in the Screenshot app.")
+                     detail: model.folderReadable
+                         ? "Where macOS saves your screenshots. You can change it in the Screenshot app."
+                         : "Where macOS saves your screenshots. Allow access once so new ones can be printed.") {
+                    if !model.folderReadable {
+                        Button("Allow Access…") { model.grantAccess() }
+                    }
+                }
                 step(symbol: "bolt.fill", tint: .orange,
                      title: "Instant prints",
-                     detail: floatingThumbnail
-                         ? "The macOS floating thumbnail holds screenshots back for about five seconds."
-                         : "The macOS floating thumbnail is off, so prints arrive right away.") {
+                     detail: !floatingThumbnail
+                         ? "The macOS floating thumbnail is off, so prints arrive right away."
+                         : ScreenshotFolder.canChangeFloatingThumbnail
+                             ? "The macOS floating thumbnail holds screenshots back for about five seconds."
+                             : "The macOS floating thumbnail holds screenshots back for about five seconds. In Screenshot, open Options and turn off Show Floating Thumbnail.") {
                     if floatingThumbnail {
-                        Button("Turn Off") {
-                            ScreenshotFolder.setShowsFloatingThumbnail(false)
-                            floatingThumbnail = false
+                        if ScreenshotFolder.canChangeFloatingThumbnail {
+                            Button("Turn Off") {
+                                ScreenshotFolder.setShowsFloatingThumbnail(false)
+                                floatingThumbnail = false
+                            }
+                        } else {
+                            Button("Show Me") { ScreenshotFolder.openScreenshotOptions() }
                         }
                     } else {
                         Image(systemName: "checkmark.circle.fill").foregroundStyle(.green).font(.title3)
@@ -85,6 +97,9 @@ struct WelcomeView: View {
         .onAppear {
             baseline = model.arrivals
             sample.title = String(localized: "where’d it go?")
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            floatingThumbnail = ScreenshotFolder.showsFloatingThumbnail
         }
         .onChange(of: model.arrivals) { _, count in
             withAnimation(.spring(duration: 0.4, bounce: 0.4)) { printed = count > baseline }

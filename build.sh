@@ -1,6 +1,7 @@
 #!/bin/bash
 # Builds "Where'd It Go.app" into ./build, signed ad hoc for local use.
 # Release builds are universal (Apple silicon and Intel); debug builds are for this Mac only.
+# SANDBOX=1 signs with the App Store sandbox entitlements, to try the App Store behavior locally.
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -24,10 +25,15 @@ else
 fi
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 cp Resources/Camera.png "$APP/Contents/Resources/Camera.png"
+cp Resources/PrivacyInfo.xcprivacy "$APP/Contents/Resources/PrivacyInfo.xcprivacy"
 cp Resources/Camera.png build/bin/Camera.png
 
 "$BIN" --render-icon build/AppIcon.iconset
 iconutil -c icns build/AppIcon.iconset -o "$APP/Contents/Resources/AppIcon.icns"
 
-codesign --force --sign - --options runtime --timestamp=none "$APP"
+if [ "${SANDBOX:-0}" = 1 ]; then
+  codesign --force --sign - --options runtime --timestamp=none --entitlements Resources/WheredItGo.entitlements "$APP"
+else
+  codesign --force --sign - --options runtime --timestamp=none "$APP"
+fi
 echo "Built $APP"

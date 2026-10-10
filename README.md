@@ -100,6 +100,22 @@ cd whereditgo
 
 This builds a release binary, assembles `build/Where'd It Go.app` with its icon, and signs it for local use. Run `./build.sh debug` for a debug build, or `./package.sh` to produce the downloadable `build/WheredItGo.zip`.
 
+### Mac App Store
+
+The App Store build runs in the App Sandbox with the entitlements in `Resources/WheredItGo.entitlements`. It asks once for access to the screenshot folder and keeps that permission as a bookmark, and it opens the Screenshot app instead of changing the floating-thumbnail setting itself. To try it locally, run `SANDBOX=1 ./build.sh`.
+
+To build the signed installer package for App Store Connect, set your team ID, signing identities, and provisioning profile, then run `./appstore.sh`:
+
+```sh
+TEAM_ID=ABCDE12345 \
+APP_IDENTITY="Apple Distribution: Your Name (ABCDE12345)" \
+INSTALLER_IDENTITY="3rd Party Mac Developer Installer: Your Name (ABCDE12345)" \
+PROFILE=~/Downloads/WheredItGo_Mac_App_Store.provisionprofile \
+./appstore.sh
+```
+
+Upload `build/WheredItGo.pkg` with Apple’s Transporter app.
+
 ## How it works
 
 - Watches your screenshot folder (read from the `com.apple.screencapture` preferences) with a lightweight file-system watcher.
@@ -116,9 +132,10 @@ Sources/WheredItGo/
   Views/     Camera, Polaroid, pile, menu, settings, and welcome views
   Support/   Preferences, screenshot folder helpers, and sounds
   Debug/     Debug-only snapshot renderer for reviewing the UI
-Resources/   Info.plist and the camera photo
+Resources/   Info.plist, entitlements, privacy manifest, and the camera photo
 build.sh     Builds and signs the .app
 package.sh   Builds the downloadable zip
+appstore.sh  Builds the signed Mac App Store package
 ```
 
 ## License
