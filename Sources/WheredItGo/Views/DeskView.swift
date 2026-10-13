@@ -279,6 +279,12 @@ struct PileCard: View {
                         .transition(.scale(scale: 0.7, anchor: .bottom).combined(with: .opacity))
                 }
             }
+            // Inside the fan transforms so the drag image lifts off from where the card is drawn.
+            .onDrag {
+                model.dragProvider(for: shot)
+            } preview: {
+                PolaroidView(shot: shot, lifted: true).rotationEffect(.degrees(-3))
+            }
             .rotation3DEffect(.degrees(featured && !reduceMotion ? (model.sheen - 0.5) * 16 : 0),
                               axis: (x: 0, y: 1, z: 0), perspective: 0.5)
             .matchedGeometryEffect(id: shot.id, in: namespace)
@@ -293,11 +299,6 @@ struct PileCard: View {
                     y: toss ? 60 + CGFloat(index % 2) * 34 : 0)
             .opacity(model.tossed.contains(shot.id) ? 0 : 1)
             .allowsHitTesting(!model.sweeping)
-            .onDrag {
-                model.dragProvider(for: shot)
-            } preview: {
-                PolaroidView(shot: shot, lifted: true).rotationEffect(.degrees(-3))
-            }
             .onTapGesture(count: 2) { model.open(shot) }
             .contextMenu {
                 Button("Open") { model.open(shot) }
