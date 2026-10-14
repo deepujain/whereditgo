@@ -163,8 +163,21 @@ struct AboutView: View {
     private static func creditsCard(title: String) -> Shot {
         let shot = Shot(url: URL(fileURLWithPath: "/"), date: .now, app: "v\(Bundle.main.shortVersion)")
         shot.title = title
+        shot.image = creditsPhoto
         return shot
     }
+
+    /// A real photo for the credits print and the app icon's print.
+    static let creditsPhoto: NSImage? = {
+        if let url = Bundle.main.url(forResource: "Credits", withExtension: "jpg") { return NSImage(contentsOf: url) }
+        #if DEBUG
+        let source = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        return NSImage(contentsOf: source.appending(path: "Resources/Credits.jpg"))
+        #else
+        return nil
+        #endif
+    }()
 }
 
 extension Bundle {

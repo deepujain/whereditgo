@@ -69,14 +69,19 @@ struct AppIconArtwork: View {
 private struct IconPrint: View {
     var body: some View {
         VStack(spacing: 0) {
-            SamplePhoto()
-                .scaleEffect(2.6)
-                .frame(width: 300, height: 250)
-                .clipped()
-            Text(verbatim: "?")
-                .font(.custom("Noteworthy-Bold", size: 96))
-                .foregroundStyle(Color(red: 0.16, green: 0.19, blue: 0.36))
-                .frame(height: 110)
+            Group {
+                if let photo = AboutView.creditsPhoto {
+                    // The camera covers the top of the print, so the sunset sits low enough to show.
+                    Image(nsImage: photo).resizable().scaledToFill()
+                        .frame(width: 390, height: 325)
+                        .offset(y: 58)
+                } else {
+                    SamplePhoto().scaleEffect(2.6)
+                }
+            }
+            .frame(width: 300, height: 250)
+            .clipped()
+            Color.clear.frame(height: 110)
         }
         .padding([.top, .horizontal], 22)
         .frame(width: 344, height: 400, alignment: .top)

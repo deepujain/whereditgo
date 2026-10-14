@@ -162,7 +162,7 @@ struct PileView: View {
                     Image(systemName: "photo.stack")
                 }
                 .foregroundStyle(.secondary)
-                .pill()
+                .pill(dissolve: model.chipDissolve)
                 .accessibilityLabel(Text("\(model.todayCount) screenshots today"))
                 .accessibilityAction(named: Text("Show Pile")) { model.showPile() }
 
@@ -228,23 +228,38 @@ private struct CardActionStyle: ButtonStyle {
     }
 }
 
-private struct Pill: ViewModifier {
+private struct Pill: ViewModifier, Animatable {
     var pressed = false
+    /// From 0 to 1, the chip folding away like the Dynamic Island: the label melts first, then the capsule pinches shut.
+    var dissolve = 0.0
+
+    nonisolated var animatableData: Double {
+        get { dissolve }
+        set { dissolve = newValue }
+    }
 
     func body(content: Content) -> some View {
+        let melt = min(1, dissolve / 0.45)
+        let pinch = max(0, (dissolve - 0.3) / 0.7)
         content
             .font(.caption.weight(.semibold))
+            .opacity(1 - melt)
+            .blur(radius: melt * 4)
+            .scaleEffect(1 - melt * 0.15)
             .padding(.horizontal, 10)
             .frame(height: Layout.badgeHeight)
             .background(.regularMaterial, in: Capsule())
             .overlay(Capsule().strokeBorder(.white.opacity(0.25), lineWidth: 0.5))
             .shadow(color: .black.opacity(pressed ? 0.06 : 0.12), radius: pressed ? 3 : 6, y: pressed ? 1 : 2)
             .scaleEffect(pressed ? 0.92 : 1)
+            .scaleEffect(x: 1 - pinch * 0.85, y: 1 - pinch * 0.5)
+            .blur(radius: pinch * 3)
+            .opacity(1 - pinch * pinch)
     }
 }
 
 private extension View {
-    func pill(pressed: Bool = false) -> some View { modifier(Pill(pressed: pressed)) }
+    func pill(pressed: Bool = false, dissolve: Double = 0) -> some View { modifier(Pill(pressed: pressed, dissolve: dissolve)) }
 }
 
 private struct PillButtonStyle: ButtonStyle {

@@ -25,8 +25,10 @@ else
 fi
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 cp Resources/Camera.png "$APP/Contents/Resources/Camera.png"
+cp Resources/Credits.jpg "$APP/Contents/Resources/Credits.jpg"
 cp Resources/PrivacyInfo.xcprivacy "$APP/Contents/Resources/PrivacyInfo.xcprivacy"
 cp Resources/Camera.png build/bin/Camera.png
+cp Resources/Credits.jpg build/bin/Credits.jpg
 
 "$BIN" --render-icon build/AppIcon.iconset
 iconutil -c icns build/AppIcon.iconset -o "$APP/Contents/Resources/AppIcon.icns"

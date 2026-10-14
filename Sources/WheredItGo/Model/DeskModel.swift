@@ -66,6 +66,10 @@ final class DeskModel {
     var cameraHop = false
     @ObservationIgnored var panelFrame = CGRect.zero
     private var showPileAlways = true
+    /// The pile is leaving the screen because On Screen was just turned off.
+    private var hidingPile = false
+    /// From 0 to 1 as the count chip folds away.
+    private(set) var chipDissolve = 0.0
     private var lingering = false
     /// The pile has tucked away, leaving only its count in the corner.
     private(set) var tucked = false
@@ -145,7 +149,46 @@ final class DeskModel {
     private func reloadPrefs() {
         corner = Corner(rawValue: defaults.string(forKey: Prefs.corner) ?? "") ?? .bottomTrailing
         pileSize = min(10, max(3, defaults.integer(forKey: Prefs.pileSize)))
-        showPileAlways = defaults.bool(forKey: Prefs.showPile)
+        let showPile = defaults.bool(forKey: Prefs.showPile)
+        guard !hidingPile, showPile != showPileAlways else { return }
+        if !showPile, isVisible, !cameraInPanel, !lingering, !expandedInPanel, !sweeping, sweptCount == 0 {
+            hidePile()
+        } else {
+            showPileAlways = showPile
+        }
+    }
+
+    /// Flicks the prints off screen and folds the chip away before the panel goes, instead of vanishing.
+    /// The prints stay on the pile for next time.
+    private func hidePile() {
+        hidingPile = true
+        tuckTask?.cancel()
+        Task {
+            if reduceMotion {
+                withAnimation(.easeOut(duration: 0.25)) {
+                    tossed = Set(shots.map(\.id))
+                    chipDissolve = 1
+                }
+                try? await Task.sleep(for: .milliseconds(280))
+            } else {
+                if !tuckedInPanel {
+                    for (index, shot) in visibleShots.enumerated() {
+                        Sounds.swish(index)
+                        withAnimation(.timingCurve(0.55, 0, 0.8, 0.45, duration: 0.5)) { _ = tossed.insert(shot.id) }
+                        try? await Task.sleep(for: .milliseconds(90))
+                    }
+                }
+                withAnimation(.easeInOut(duration: 0.55)) { chipDissolve = 1 }
+                try? await Task.sleep(for: .milliseconds(580))
+            }
+            showPileAlways = defaults.bool(forKey: Prefs.showPile)
+            hidingPile = false
+            // Reset only once the panel is off screen, so the pile is whole the next time it shows.
+            try? await Task.sleep(for: .milliseconds(100))
+            tossed = []
+            chipDissolve = 0
+            if showPileAlways { scheduleTuck() }
+        }
     }
 
     // MARK: Folder scanning
@@ -354,7 +397,7 @@ final class DeskModel {
             guard !Task.isCancelled else { return }
             // Hover can go stale when a drag carries the pointer out; trust where it really is.
             if pointerInside, !panelFrame.contains(NSEvent.mouseLocation) { return pointerHovering(false) }
-            guard !pointerInside, !presenting, !cameraInPanel, !sweeping, sweptCount == 0,
+            guard !pointerInside, !presenting, !cameraInPanel, !sweeping, !hidingPile, sweptCount == 0,
                   !pileExpanded, !shots.isEmpty else { return }
             withAnimation(.spring(duration: 0.45, bounce: 0.15)) { tucked = true }
             try? await Task.sleep(for: .milliseconds(450))
