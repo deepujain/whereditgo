@@ -4,28 +4,18 @@ import ImageIO
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// Renders the main desk states to PNGs for visual review:
-/// `WheredItGo --snapshots <dir> [--backdrop <wallpaper>] <image>...`.
-/// Prints made from images are captioned with their file names.
+/// Renders the main desk states to PNGs for visual review: `WheredItGo --snapshots <dir> <image>...`.
 @MainActor
 enum Snapshots {
-    /// The desktop a backdrop is laid out on, so each scene shows the matching corner of the screen.
-    private static let screen = CGSize(width: 1440, height: 900)
-    private static var backdrop: NSImage?
-
-    static func render(to folder: URL, images: [URL], backdrop backdropURL: URL? = nil) throws {
+    static func render(to folder: URL, images: [URL]) throws {
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        backdrop = backdropURL.flatMap { NSImage(contentsOf: $0) }
         let titles = ["Revenue", "Bug #482", "Launch plan", "Design review", "Team chat", "Trail map"]
-        let apps = images.isEmpty ? ["Numbers", "Xcode", "Notes", "Keynote", "Messages", "Maps"]
-                                  : ["Photos", "Safari", "Preview", "Photos", "Safari", "Preview"]
+        let apps = ["Numbers", "Xcode", "Notes", "Keynote", "Messages", "Maps"]
         let count = images.isEmpty ? SampleScreen.Kind.allCases.count : images.count
         let shots = (0..<count).map { index in
             let url = images.indices.contains(index) ? images[index] : URL(fileURLWithPath: "/sample-\(index).png")
             let shot = Shot(url: url, date: Date().addingTimeInterval(Double(-index) * 1500), app: apps[index % apps.count])
-            shot.title = images.indices.contains(index)
-                ? url.deletingPathExtension().lastPathComponent.replacingOccurrences(of: "-", with: " ")
-                : titles[index % titles.count]
+            shot.title = titles[index % titles.count]
             if images.indices.contains(index), let image = ShotImaging.thumbnail(url, maxPixel: 720) {
                 shot.image = NSImage(cgImage: image.cgImage, size: .zero)
             } else {
@@ -57,7 +47,8 @@ enum Snapshots {
             }
             .padding(.horizontal, 44)
             .padding(.vertical, 28)
-            .background { desktop(fill: true) }
+            .background(LinearGradient(colors: [Color(red: 0.36, green: 0.42, blue: 0.62), Color(red: 0.82, green: 0.6, blue: 0.55)],
+                                       startPoint: .top, endPoint: .bottom))
             .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         ), to: folder.appending(path: "0-hero.png"))
         try write(scene(model, size: CGSize(width: Layout.pileSize.width, height: Layout.pileSize.height + Layout.stationSize.height)),
@@ -139,22 +130,9 @@ enum Snapshots {
         AnyView(
             DeskView(model: model)
                 .frame(width: size.width, height: size.height)
-                .background { desktop(fill: false).frame(width: size.width, height: size.height, alignment: .bottomTrailing).clipped() }
+                .background(LinearGradient(colors: [Color(red: 0.36, green: 0.42, blue: 0.62), Color(red: 0.82, green: 0.6, blue: 0.55)],
+                                           startPoint: .top, endPoint: .bottom))
         )
-    }
-
-    /// The wallpaper, either filling the view or laid out on a full screen to show its bottom-right corner.
-    @ViewBuilder private static func desktop(fill: Bool) -> some View {
-        if let backdrop {
-            if fill {
-                Image(nsImage: backdrop).resizable().scaledToFill()
-            } else {
-                Image(nsImage: backdrop).resizable().scaledToFill().frame(width: screen.width, height: screen.height).clipped()
-            }
-        } else {
-            LinearGradient(colors: [Color(red: 0.36, green: 0.42, blue: 0.62), Color(red: 0.82, green: 0.6, blue: 0.55)],
-                           startPoint: .top, endPoint: .bottom)
-        }
     }
 
     /// The fan with a dot grid tinted by which card the pointer hit test picks.

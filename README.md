@@ -21,7 +21,9 @@ You take a screenshot, the little preview vanishes before you can drag it anywhe
 **Where’d It Go?** keeps today’s screenshots right where you can grab them. Each new screenshot is printed by an instant camera in the corner of your screen, develops like instant film, and drops onto a pile. Drag any print straight into Slack, Mail, Figma, or Finder.
 
 <p align="center">
-  <img src="docs/images/0-hero.png" width="560" alt="A new screenshot curling out of the camera’s slot, next to the pile of today’s prints">
+  <img src="docs/images/printing.png" width="220" alt="The instant camera in the corner of the screen, a new print hanging out of its slot with a “Wiggle to develop” hint, above a pile topped by a lake photo">
+  &nbsp;&nbsp;
+  <img src="docs/images/pile.png" width="220" alt="A neat pile of prints in the corner of the screen, topped by a coastal cliff photo, with a “3 today” badge underneath">
 </p>
 
 ## Features
@@ -33,6 +35,10 @@ You take a screenshot, the little preview vanishes before you can drag it anywhe
 - **A camera with a little personality.** The lens follows your pointer around the screen, and the camera gives a happy hop when a print lands.
 - **Handwritten captions.** On-device text recognition writes each print’s most prominent words on it, so you can tell prints apart at a glance. Nothing leaves your Mac.
 
+<p align="center">
+  <img src="docs/images/feed.png" width="760" alt="Five frames from a screen recording of the camera feeding out a print: a thin edge appears in the slot, then the sheet curls out, sags, and hangs fully out">
+</p>
+
 ### The pile
 
 - **Fan it out.** Hover the pile and it spreads into a hand of cards, newest first. The card under your pointer lifts, tilts toward you, and catches a foil-like shine as you move across it.
@@ -41,15 +47,13 @@ You take a screenshot, the little preview vanishes before you can drag it anywhe
 - **Sweep it away.** Hover the pile and click **Sweep** to flick every print off with a swish and a poof. Changed your mind? **Undo** puts them back. Your files are never touched.
 
 <p align="center">
-  <img src="docs/images/3-fan-holo.png" width="760" alt="The pile fanned out, with Copy Picture, Copy Text, Open, and Show in Finder buttons on the lifted print">
+  <img src="docs/images/fan.png" width="380" alt="Three prints fanned out in the corner, the middle one lifted with a bar of quick-action buttons, above “3 today” and Sweep buttons">
 </p>
 
 <p align="center">
-  <img src="docs/images/2-pile-toast.png" width="220" alt="Text copied confirmation under the pile">
+  <img src="docs/images/sweep.png" width="360" alt="Three prints fanned out with the pointer on the Sweep button">
   &nbsp;&nbsp;
-  <img src="docs/images/6-sweep-button.png" width="220" alt="The Sweep button under the pile">
-  &nbsp;&nbsp;
-  <img src="docs/images/8-undo.png" width="220" alt="Undo after sweeping">
+  <img src="docs/images/undo.png" width="360" alt="After sweeping, the corner is clear except for a pill reading “Swept 3 · Undo”">
 </p>
 
 ### Menu bar
@@ -61,7 +65,7 @@ Click the photo-stack icon in the menu bar to open a small panel:
 - **Everything else, one click away.** Open the screenshots folder, sweep the pile, replay the welcome tour, and open About, Settings, or Quit.
 
 <p align="center">
-  <img src="docs/images/10-menu.png" width="344" alt="The menu bar panel with today’s prints, quick switches, and footer buttons">
+  <img src="docs/images/menu.png" width="360" alt="The menu bar panel with today’s prints, quick switches, and footer buttons">
 </p>
 
 ### Settings and About
@@ -141,5 +145,3 @@ appstore.sh  Builds the signed Mac App Store package
 ## License
 
 MIT © 2026 1xAI. See [LICENSE](LICENSE).
-
-Photos in the README screenshots are from [Unsplash](https://unsplash.com), shown on the macOS Sonoma wallpaper.
