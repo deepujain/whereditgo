@@ -141,3 +141,5 @@ appstore.sh  Builds the signed Mac App Store package
 ## License
 
 MIT © 2026 1xAI. See [LICENSE](LICENSE).
+
+Photos in the README screenshots are from [Unsplash](https://unsplash.com), shown on the macOS Sonoma wallpaper.

@@ -23,9 +23,15 @@ struct WheredItGoApp: App {
             exit(0)
         }
         if let flag = arguments.firstIndex(of: "--snapshots"), arguments.indices.contains(flag + 1) {
-            let images = arguments.dropFirst(flag + 2).map { URL(fileURLWithPath: $0) }
+            var rest = Array(arguments.dropFirst(flag + 2))
+            var backdrop: URL?
+            if let option = rest.firstIndex(of: "--backdrop"), rest.indices.contains(option + 1) {
+                backdrop = URL(fileURLWithPath: rest[option + 1])
+                rest.removeSubrange(option...option + 1)
+            }
             do {
-                try Snapshots.render(to: URL(fileURLWithPath: arguments[flag + 1], isDirectory: true), images: images)
+                try Snapshots.render(to: URL(fileURLWithPath: arguments[flag + 1], isDirectory: true),
+                                     images: rest.map { URL(fileURLWithPath: $0) }, backdrop: backdrop)
                 exit(0)
             } catch {
                 FileHandle.standardError.write(Data("Snapshots failed: \(error)\n".utf8))
