@@ -196,7 +196,7 @@ struct MenuContent: View {
             QuickSwitch(symbol: "doc.on.clipboard.fill", title: "Auto Copy", isOn: $copyToClipboard,
                         help: "Copy every new screenshot to the clipboard.")
             QuickSwitch(symbol: "tray.full.fill", title: "Tidy", isOn: $tidyDesktop,
-                        help: "File new screenshots under Pictures › Where’d It Go, one folder per day.")
+                        help: "File new screenshots under Desktop › Screenshots, one folder per day.")
             QuickSwitch(symbol: playSounds ? "speaker.wave.2.fill" : "speaker.slash.fill", title: "Sounds", isOn: $playSounds,
                         help: "Shutter, motor, and landing sounds.")
         }

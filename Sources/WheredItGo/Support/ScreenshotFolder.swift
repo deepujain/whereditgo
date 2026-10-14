@@ -38,7 +38,7 @@ enum ScreenshotFolder {
     }
 
     static var archiveRoot: URL {
-        home.appending(path: "Pictures/Where’d It Go", directoryHint: .isDirectory)
+        home.appending(path: "Desktop/Screenshots", directoryHint: .isDirectory)
     }
 
     /// macOS holds the file back while its floating thumbnail is on screen.
@@ -96,7 +96,7 @@ enum ScreenshotFolder {
         return name.hasPrefix("Screenshot") || name.hasPrefix("Screen Shot")
     }
 
-    /// Files a screenshot under Pictures › Where’d It Go › yyyy-MM-dd.
+    /// Files a screenshot under Desktop › Screenshots › yyyy-MM-dd.
     static func archive(_ url: URL, created: Date) -> URL? {
         let day = created.formatted(.iso8601.year().month().day())
         let folder = archiveRoot.appending(path: day, directoryHint: .isDirectory)

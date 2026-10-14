@@ -61,7 +61,7 @@ You take a screenshot, the little preview vanishes before you can drag it anywhe
 Click the photo-stack icon in the menu bar to open a small panel:
 
 - **Today’s contact sheet.** Today’s prints as mini instant photos, grouped into morning, afternoon, and evening. Click one to open it, drag it into any app, or right-click to copy it, copy its text, or show it in Finder. With nothing printed yet, the panel shows the screenshot shortcuts instead.
-- **Quick switches.** Round toggles for **On Screen** (keep the pile visible), **Instant** (skip the five-second macOS thumbnail delay), **Auto Copy** (put every new screenshot on the clipboard), **Tidy** (file screenshots under `Pictures/Where’d It Go/<date>`), and **Sounds**.
+- **Quick switches.** Round toggles for **On Screen** (keep the pile visible), **Instant** (skip the five-second macOS thumbnail delay), **Auto Copy** (put every new screenshot on the clipboard), **Tidy** (file screenshots under `Desktop/Screenshots/<date>`), and **Sounds**.
 - **Everything else, one click away.** Open the screenshots folder, sweep the pile, replay the welcome tour, and open About, Settings, or Quit.
 
 <p align="center">

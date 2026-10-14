@@ -93,7 +93,7 @@ struct SettingsView: View {
                 Toggle("Handwrite captions from the screenshot’s text", isOn: $smartCaptions)
                 Toggle("Copy each new screenshot to the clipboard", isOn: $copyToClipboard)
                 Toggle("Keep my Desktop tidy", isOn: $tidyDesktop)
-                Text("Files new screenshots under Pictures › Where’d It Go, one folder per day.")
+                Text("Files new screenshots under Desktop › Screenshots, one folder per day.")
                     .font(.caption).foregroundStyle(.secondary)
             }
 
