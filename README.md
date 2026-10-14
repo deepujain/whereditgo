@@ -36,7 +36,7 @@ You take a screenshot, the little preview vanishes before you can drag it anywhe
 - **Handwritten captions.** On-device text recognition writes each print’s most prominent words on it, so you can tell prints apart at a glance. Nothing leaves your Mac.
 
 <p align="center">
-  <img src="docs/images/feed.png" width="760" alt="Five frames from a screen recording of the camera feeding out a print: a thin edge appears in the slot, then the sheet curls out, sags, and hangs fully out">
+  <img src="docs/images/developed.png" width="200" alt="The instant camera with a fully developed print hanging out of its slot, showing a lake photo">
 </p>
 
 ### The pile
