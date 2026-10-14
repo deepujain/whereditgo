@@ -51,9 +51,7 @@ You take a screenshot, the little preview vanishes before you can drag it anywhe
 </p>
 
 <p align="center">
-  <img src="docs/images/sweep.png" width="360" alt="Three prints fanned out with the pointer on the Sweep button">
-  &nbsp;&nbsp;
-  <img src="docs/images/undo.png" width="360" alt="After sweeping, the corner is clear except for a pill reading “Swept 3 · Undo”">
+  <img src="docs/images/undo.png" width="380" alt="After sweeping, the corner is clear except for a pill reading “Swept 3 · Undo”">
 </p>
 
 ### Menu bar
@@ -73,14 +71,6 @@ Click the photo-stack icon in the menu bar to open a small panel:
 - **Pick your corner.** Click a corner of a tiny Mac screen to send the pile there, and watch the pile’s size change as you adjust it.
 - **About, printed.** The About window’s camera prints its own credits. Click the camera to take another, and it reprints your recent screenshots.
 - **Respects your setup.** Follows the screenshot location you chose in the Screenshot app and supports launch at login. Sounds are subtle and can be turned off. With Reduce Motion on, prints fade in instead of feeding out. VoiceOver reads each print’s caption and the text inside it.
-
-<p align="center">
-  <img src="docs/images/12-corner-picker.png" width="430" alt="Choosing the pile’s corner in Settings">
-</p>
-
-<p align="center">
-  <img src="docs/images/11-about.png" width="300" alt="The About window, where the camera prints its own credits">
-</p>
 
 ## Install
 
