@@ -10,6 +10,8 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/deepujain/whereditgo/releases/latest/download/WheredItGo.zip"><b>Download</b></a> ·
+  <a href="#install">Install steps</a> ·
   <a href="https://1xaispark.com/apps/wherediditgo.html">Website</a> ·
   macOS 14 Sonoma or later · Free and open source (MIT)
 </p>
@@ -25,6 +27,18 @@ You take a screenshot, the little preview vanishes before you can drag it anywhe
   &nbsp;&nbsp;
   <img src="docs/images/pile.png" width="220" alt="A neat pile of prints in the corner of the screen, topped by a coastal cliff photo, with a “3 today” badge underneath">
 </p>
+
+## Install
+
+1. Download **[WheredItGo.zip](https://github.com/deepujain/whereditgo/releases/latest/download/WheredItGo.zip)** (macOS 14 or later, Apple silicon and Intel).
+2. Open the zip and drag **Where’d It Go.app** into your **Applications** folder.
+3. Open it. The first time, macOS blocks it with “Apple cannot check it for malicious software,” because the app isn’t notarized by Apple yet. Click **OK**, then open **System Settings › Privacy & Security**, scroll down to **Security**, click **Open Anyway** next to Where’d It Go?, and enter your password. You only need to do this once.
+
+   Prefer Terminal? This does the same thing: `xattr -dr com.apple.quarantine "/Applications/Where'd It Go.app"`
+
+A photo-stack icon appears in the menu bar; click it to see today’s prints and switches. macOS then asks for permission to read your Desktop (or wherever your screenshots are saved). That’s the only access it needs.
+
+**Instant and Tidy are on from the start.** macOS normally holds each screenshot back for about five seconds while it shows its own floating thumbnail, so on first launch Where’d It Go? turns that thumbnail off and prints appear right away. To get the thumbnail back, turn off **Instant** in the menu bar panel or **Settings › Speed**. Tidy files new screenshots under `Desktop/Screenshots/<date>`; turn it off in the same panel to leave them on the Desktop.
 
 ## Features
 
@@ -71,18 +85,6 @@ Click the photo-stack icon in the menu bar to open a small panel:
 - **Pick your corner.** Click a corner of a tiny Mac screen to send the pile there, and watch the pile’s size change as you adjust it.
 - **About, printed.** The About window’s camera prints its own credits. Click the camera to take another, and it reprints your recent screenshots.
 - **Respects your setup.** Follows the screenshot location you chose in the Screenshot app and supports launch at login. Sounds are subtle and can be turned off. With Reduce Motion on, prints fade in instead of feeding out. VoiceOver reads each print’s caption and the text inside it.
-
-## Install
-
-1. Download **[WheredItGo.zip](https://github.com/deepujain/whereditgo/releases/latest/download/WheredItGo.zip)** (macOS 14 or later, Apple silicon and Intel).
-2. Open the zip and drag **Where’d It Go.app** into your **Applications** folder.
-3. Open it. The first time, macOS blocks it with “Apple cannot check it for malicious software,” because the app isn’t notarized by Apple yet. Click **OK**, then open **System Settings › Privacy & Security**, scroll down to **Security**, click **Open Anyway** next to Where’d It Go?, and enter your password. You only need to do this once.
-
-   Prefer Terminal? This does the same thing: `xattr -dr com.apple.quarantine "/Applications/Where'd It Go.app"`
-
-A photo-stack icon appears in the menu bar; click it to see today’s prints and switches. macOS then asks for permission to read your Desktop (or wherever your screenshots are saved). That’s the only access it needs.
-
-**Instant and Tidy are on from the start.** macOS normally holds each screenshot back for about five seconds while it shows its own floating thumbnail, so on first launch Where’d It Go? turns that thumbnail off and prints appear right away. To get the thumbnail back, turn off **Instant** in the menu bar panel or **Settings › Speed**. Tidy files new screenshots under `Desktop/Screenshots/<date>`; turn it off in the same panel to leave them on the Desktop.
 
 ## Build from source
 
