@@ -62,6 +62,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         model.start()
         panel = DeskPanelController(model: model)
         if !UserDefaults.standard.bool(forKey: Prefs.hasOnboarded) {
+            if ScreenshotFolder.canChangeFloatingThumbnail, ScreenshotFolder.showsFloatingThumbnail {
+                ScreenshotFolder.setShowsFloatingThumbnail(false)
+            }
             showWelcome()
         }
     }

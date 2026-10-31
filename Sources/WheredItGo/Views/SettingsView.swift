@@ -10,7 +10,7 @@ struct SettingsView: View {
     @AppStorage(Prefs.playSounds) private var playSounds = true
     @AppStorage(Prefs.smartCaptions) private var smartCaptions = true
     @AppStorage(Prefs.copyToClipboard) private var copyToClipboard = false
-    @AppStorage(Prefs.tidyDesktop) private var tidyDesktop = false
+    @AppStorage(Prefs.tidyDesktop) private var tidyDesktop = true
     private let thumbnailState = State(initialValue: ScreenshotFolder.showsFloatingThumbnail)
     private let loginState = State(initialValue: SMAppService.mainApp.status == .enabled)
 

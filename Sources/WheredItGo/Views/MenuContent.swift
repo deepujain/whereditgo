@@ -8,7 +8,7 @@ struct MenuContent: View {
 
     @AppStorage(Prefs.showPile) private var showPile = true
     @AppStorage(Prefs.playSounds) private var playSounds = true
-    @AppStorage(Prefs.tidyDesktop) private var tidyDesktop = false
+    @AppStorage(Prefs.tidyDesktop) private var tidyDesktop = true
     @AppStorage(Prefs.copyToClipboard) private var copyToClipboard = false
     private let instantState = State(initialValue: !ScreenshotFolder.showsFloatingThumbnail)
 

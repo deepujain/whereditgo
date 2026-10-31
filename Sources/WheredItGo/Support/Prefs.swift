@@ -12,6 +12,7 @@ enum Prefs {
 
     static func register() {
         UserDefaults.standard.register(defaults: [
+            tidyDesktop: true,
             smartCaptions: true,
             playSounds: true,
             pileSize: 6,

@@ -59,7 +59,7 @@ You take a screenshot, the little preview vanishes before you can drag it anywhe
 Click the photo-stack icon in the menu bar to open a small panel:
 
 - **Today’s contact sheet.** Today’s prints as mini instant photos, grouped into morning, afternoon, and evening. Click one to open it, drag it into any app, or right-click to copy it, copy its text, or show it in Finder. With nothing printed yet, the panel shows the screenshot shortcuts instead.
-- **Quick switches.** Round toggles for **On Screen** (keep the pile visible), **Instant** (skip the five-second macOS thumbnail delay), **Auto Copy** (put every new screenshot on the clipboard), **Tidy** (file screenshots under `Desktop/Screenshots/<date>`), and **Sounds**.
+- **Quick switches.** Round toggles for **On Screen** (keep the pile visible), **Instant** (skip the five-second macOS thumbnail delay, on by default), **Auto Copy** (put every new screenshot on the clipboard), **Tidy** (file screenshots under `Desktop/Screenshots/<date>`, on by default), and **Sounds**.
 - **Everything else, one click away.** Open the screenshots folder, sweep the pile, replay the welcome tour, and open About, Settings, or Quit.
 
 <p align="center">
@@ -82,7 +82,7 @@ Click the photo-stack icon in the menu bar to open a small panel:
 
 A photo-stack icon appears in the menu bar; click it to see today’s prints and switches. macOS then asks for permission to read your Desktop (or wherever your screenshots are saved). That’s the only access it needs.
 
-**Tip:** macOS holds each screenshot back for about five seconds while it shows its own floating thumbnail. Turn on the **Instant** switch in the menu bar panel (or use the welcome tour or **Settings › Speed**) so prints appear right away.
+**Instant and Tidy are on from the start.** macOS normally holds each screenshot back for about five seconds while it shows its own floating thumbnail, so on first launch Where’d It Go? turns that thumbnail off and prints appear right away. To get the thumbnail back, turn off **Instant** in the menu bar panel or **Settings › Speed**. Tidy files new screenshots under `Desktop/Screenshots/<date>`; turn it off in the same panel to leave them on the Desktop.
 
 ## Build from source
 
