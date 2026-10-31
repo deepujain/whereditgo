@@ -76,7 +76,9 @@ Click the photo-stack icon in the menu bar to open a small panel:
 
 1. Download **[WheredItGo.zip](https://github.com/deepujain/whereditgo/releases/latest/download/WheredItGo.zip)** (macOS 14 or later, Apple silicon and Intel).
 2. Open the zip and drag **Where’d It Go.app** into your **Applications** folder.
-3. Open it. The app isn’t notarized by Apple yet, so the first time macOS says it can’t verify the developer. Open **System Settings › Privacy & Security**, scroll down, and click **Open Anyway**. You only need to do this once.
+3. Open it. The first time, macOS blocks it with “Apple cannot check it for malicious software,” because the app isn’t notarized by Apple yet. Click **OK**, then open **System Settings › Privacy & Security**, scroll down to **Security**, click **Open Anyway** next to Where’d It Go?, and enter your password. You only need to do this once.
+
+   Prefer Terminal? This does the same thing: `xattr -dr com.apple.quarantine "/Applications/Where'd It Go.app"`
 
 A photo-stack icon appears in the menu bar; click it to see today’s prints and switches. macOS then asks for permission to read your Desktop (or wherever your screenshots are saved). That’s the only access it needs.
 
