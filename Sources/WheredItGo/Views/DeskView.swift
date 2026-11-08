@@ -4,6 +4,8 @@ import SwiftUI
 struct DeskView: View {
     let model: DeskModel
     @Namespace private var namespace
+    /// The panel's own coordinates, top-left origin, which the hosting view hit-tests against.
+    static let panelSpace = "panel"
 
     var body: some View {
         VStack(alignment: model.corner.horizontal, spacing: 0) {
@@ -18,6 +20,7 @@ struct DeskView: View {
                     : model.panelLayout.tucked ? Layout.tuckedSize.height : Layout.pileSize.height)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: model.corner.alignment)
+        .coordinateSpace(name: Self.panelSpace)
     }
 }
 
@@ -163,6 +166,19 @@ struct PileView: View {
                 }
                 .foregroundStyle(.secondary)
                 .pill(dissolve: model.chipDissolve)
+                .scaleEffect(model.moving ? 1.08 : 1)
+                .shadow(color: .black.opacity(model.moving ? 0.18 : 0), radius: 10, y: 5)
+                .animation(.spring(duration: 0.25, bounce: 0.4), value: model.moving)
+                .background {
+                    GeometryReader { proxy in
+                        let frame = proxy.frame(in: .named(DeskView.panelSpace))
+                        Color.clear
+                            .onAppear { model.chipFrame = frame }
+                            .onChange(of: frame) { _, frame in model.chipFrame = frame }
+                    }
+                }
+                .onDisappear { model.chipFrame = .zero }
+                .help(Text("Drag to move the pile."))
                 .accessibilityLabel(Text("\(model.todayCount) screenshots today"))
                 .accessibilityAction(named: Text("Show Pile")) { model.showPile() }
 

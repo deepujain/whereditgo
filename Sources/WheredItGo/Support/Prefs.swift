@@ -7,6 +7,9 @@ enum Prefs {
     static let playSounds = "playSounds"
     static let pileSize = "pileSize"
     static let corner = "corner"
+    /// Where the pile sits after it is dragged, in points from its side of the screen and from the bottom.
+    static let pileInset = "pileInset"
+    static let pileLift = "pileLift"
     static let showPile = "showPile"
     static let hasOnboarded = "hasOnboarded"
 

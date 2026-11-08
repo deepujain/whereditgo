@@ -9,6 +9,7 @@ struct FoundShot: Sendable {
 enum ScreenshotFolder {
     static let domain = "com.apple.screencapture"
     private static let imageTypes: Set<String> = ["png", "jpg", "jpeg", "heic", "tif", "tiff"]
+    static let videoTypes: Set<String> = ["mov", "mp4", "m4v"]
 
     static var current: URL {
         #if DEBUG
@@ -84,16 +85,17 @@ enum ScreenshotFolder {
         .sorted { $0.created > $1.created }
     }
 
-    /// Screenshots carry a Spotlight attribute in every language; file names are only a fallback.
+    /// Screenshots and screen recordings carry a Spotlight attribute in every language; file names are only a fallback.
     static func isScreenshot(_ url: URL) -> Bool {
-        guard imageTypes.contains(url.pathExtension.lowercased()) else { return false }
+        let type = url.pathExtension.lowercased()
+        guard imageTypes.contains(type) || videoTypes.contains(type) else { return false }
         let tagged = url.withUnsafeFileSystemRepresentation { path -> Bool in
             guard let path else { return false }
             return getxattr(path, "com.apple.metadata:kMDItemIsScreenCapture", nil, 0, 0, 0) >= 0
         }
         if tagged { return true }
         let name = url.lastPathComponent
-        return name.hasPrefix("Screenshot") || name.hasPrefix("Screen Shot")
+        return name.hasPrefix("Screenshot") || name.hasPrefix("Screen Shot") || name.hasPrefix("Screen Recording")
     }
 
     /// Files a screenshot under Desktop › Screenshots › yyyy-MM-dd.

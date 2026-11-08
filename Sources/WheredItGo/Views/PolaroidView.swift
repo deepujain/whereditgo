@@ -72,6 +72,38 @@ struct PolaroidView: View {
         .overlay {
             LinearGradient(colors: [.white.opacity(0.22), .white.opacity(0)], startPoint: .topLeading, endPoint: UnitPoint(x: 0.45, y: 0.55))
         }
+        .overlay {
+            if shot.isVideo { VideoMarks(length: shot.length).opacity(min(1, max(0, (develop - 0.4) / 0.4))) }
+        }
+    }
+}
+
+/// A play button and running time, so a recording reads as a film still rather than a picture.
+private struct VideoMarks: View {
+    let length: String?
+
+    var body: some View {
+        ZStack(alignment: .bottomTrailing) {
+            Image(systemName: "play.fill")
+                .font(.system(size: 13, weight: .bold))
+                .foregroundStyle(.white)
+                .offset(x: 1)
+                .frame(width: 32, height: 32)
+                .background(.black.opacity(0.38), in: Circle())
+                .overlay(Circle().strokeBorder(.white.opacity(0.85), lineWidth: 1.5))
+                .shadow(color: .black.opacity(0.3), radius: 3, y: 1)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            if let length {
+                Text(length)
+                    .font(.system(size: 9, weight: .semibold).monospacedDigit())
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 2)
+                    .background(.black.opacity(0.55), in: Capsule())
+                    .padding(5)
+            }
+        }
+        .allowsHitTesting(false)
     }
 }
 
@@ -97,7 +129,7 @@ private struct Holo: View {
     }
 }
 
-/// Stand-in artwork for places where there is no real screenshot, like the welcome window.
+/// Stand-in artwork for places where there is no real screenshot, like a print still loading.
 struct SamplePhoto: View {
     var body: some View {
         ZStack {

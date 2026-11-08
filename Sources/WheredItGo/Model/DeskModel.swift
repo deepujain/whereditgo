@@ -10,14 +10,17 @@ struct PanelLayout: Equatable {
     var tucked: Bool
     var count: Int
     var corner: Corner
+    var inset: CGFloat
+    var lift: CGFloat
 }
 
 enum Toast: Equatable {
-    case copiedImage, copiedText
+    case copiedImage, copiedVideo, copiedText
 
     var title: LocalizedStringKey {
         switch self {
         case .copiedImage: "Picture copied"
+        case .copiedVideo: "Recording copied"
         case .copiedText: "Text copied"
         }
     }
@@ -25,6 +28,7 @@ enum Toast: Equatable {
     var symbol: String {
         switch self {
         case .copiedImage: "photo.on.rectangle"
+        case .copiedVideo: "video"
         case .copiedText: "text.viewfinder"
         }
     }
@@ -38,6 +42,13 @@ final class DeskModel {
     private(set) var cameraInPanel = false
     private(set) var expandedInPanel = false
     private(set) var corner = Corner.bottomTrailing
+    /// Distance from the screen edge on the pile's side, after it is dragged.
+    private(set) var inset: CGFloat = 0
+    private(set) var lift: CGFloat = 0
+    /// The pile is being dragged around the screen by its chip.
+    private(set) var moving = false
+    /// The count chip, in the panel's top-left coordinates: the handle for dragging the pile.
+    @ObservationIgnored var chipFrame = CGRect.zero
     private(set) var pileSize = 6
     private(set) var folderURL = ScreenshotFolder.current
     private(set) var folderReadable = true
@@ -110,7 +121,7 @@ final class DeskModel {
     var panelLayout: PanelLayout {
         PanelLayout(visible: isVisible, camera: cameraInPanel, expanded: expandedInPanel,
                     tucked: tuckedInPanel && !cameraInPanel && !expandedInPanel && sweptCount == 0,
-                    count: visibleShots.count, corner: corner)
+                    count: visibleShots.count, corner: corner, inset: inset, lift: lift)
     }
 
     // MARK: Lifecycle
@@ -148,6 +159,8 @@ final class DeskModel {
 
     private func reloadPrefs() {
         corner = Corner(rawValue: defaults.string(forKey: Prefs.corner) ?? "") ?? .bottomTrailing
+        inset = max(0, defaults.double(forKey: Prefs.pileInset))
+        lift = max(0, defaults.double(forKey: Prefs.pileLift))
         pileSize = min(10, max(3, defaults.integer(forKey: Prefs.pileSize)))
         let showPile = defaults.bool(forKey: Prefs.showPile)
         guard !hidingPile, showPile != showPileAlways else { return }
@@ -263,12 +276,17 @@ final class DeskModel {
 
     private func loadImage(_ shot: Shot) async {
         let url = shot.url
-        if let thumbnail = await Work.run(on: Work.imaging, { ShotImaging.thumbnail(url, maxPixel: 720) }) {
+        if shot.isVideo {
+            guard let frame = await ShotImaging.frame(url, maxPixel: 720) else { return }
+            shot.duration = frame.duration
+            if let image = frame.image { shot.image = NSImage(cgImage: image.cgImage, size: .zero) }
+        } else if let thumbnail = await Work.run(on: Work.imaging, { ShotImaging.thumbnail(url, maxPixel: 720) }) {
             shot.image = NSImage(cgImage: thumbnail.cgImage, size: .zero)
         }
     }
 
     private func readText(_ shot: Shot, on queue: DispatchQueue) {
+        guard !shot.isVideo else { return }
         let url = shot.url
         let smart = defaults.bool(forKey: Prefs.smartCaptions)
         Task {
@@ -397,7 +415,7 @@ final class DeskModel {
             guard !Task.isCancelled else { return }
             // Hover can go stale when a drag carries the pointer out; trust where it really is.
             if pointerInside, !panelFrame.contains(NSEvent.mouseLocation) { return pointerHovering(false) }
-            guard !pointerInside, !presenting, !cameraInPanel, !sweeping, !hidingPile, sweptCount == 0,
+            guard !pointerInside, !presenting, !cameraInPanel, !sweeping, !hidingPile, !moving, sweptCount == 0,
                   !pileExpanded, !shots.isEmpty else { return }
             withAnimation(.spring(duration: 0.45, bounce: 0.15)) { tucked = true }
             try? await Task.sleep(for: .milliseconds(450))
@@ -422,18 +440,41 @@ final class DeskModel {
         Sounds.landing()
     }
 
+    // MARK: Moving
+
+    /// Starts dragging the pile by its chip. Returns false while the pile is busy.
+    func beginMove() -> Bool {
+        guard !cameraInPanel, !sweeping, !hidingPile, !moving else { return false }
+        collapse(animated: false)
+        tuckTask?.cancel()
+        moving = true
+        return true
+    }
+
+    /// Leaves the pile where it was dropped. Also saved, so it comes back there next time.
+    func placePile(corner: Corner, inset: CGFloat, lift: CGFloat) {
+        let inset = max(0, inset), lift = max(0, lift)
+        // Each write reloads the prefs at once, so save from these values, never from the model's
+        // properties, which the reload resets to whatever is saved so far.
+        defaults.set(Double(inset), forKey: Prefs.pileInset)
+        defaults.set(Double(lift), forKey: Prefs.pileLift)
+        defaults.set(corner.rawValue, forKey: Prefs.corner)
+        withAnimation(.spring(duration: 0.35, bounce: 0.2)) {
+            self.corner = corner
+            self.inset = inset
+            self.lift = lift
+            moving = false
+        }
+        scheduleTuck()
+    }
+
     // MARK: Pointer
 
     func pointerHovering(_ inside: Bool) {
         withAnimation(.easeOut(duration: 0.2)) { pointerInside = inside }
         if inside {
             untuck()
-            guard !sweeping else { return }
             collapseTask?.cancel()
-            guard !cameraInPanel, visibleShots.count > 1, !pileExpanded else { return }
-            expandedInPanel = true
-            withAnimation(.spring(duration: 0.45, bounce: 0.28)) { pileExpanded = true }
-            updateHoveredCard()
         } else {
             lastPointerX = nil
             pointer = nil
@@ -462,8 +503,17 @@ final class DeskModel {
     /// `point` has a top-left origin within a panel of `size`.
     func pointerMoved(to point: CGPoint, in size: CGSize) {
         pointer = (corner.isTrailing ? size.width - point.x : point.x, size.height - point.y)
+        // The chip is the drag handle, so only the prints themselves fan the pile out.
+        if !chipFrame.insetBy(dx: -4, dy: -4).contains(point) { expandPile() }
         updateHoveredCard()
         shake(x: point.x)
+    }
+
+    private func expandPile() {
+        guard pointerInside, !sweeping, !moving, !cameraInPanel, visibleShots.count > 1, !pileExpanded else { return }
+        collapseTask?.cancel()
+        expandedInPanel = true
+        withAnimation(.spring(duration: 0.45, bounce: 0.28)) { pileExpanded = true }
     }
 
     private func updateHoveredCard() {
@@ -532,10 +582,12 @@ final class DeskModel {
     func copy(_ shot: Shot, announce: Bool = true) {
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
-        if let image = NSImage(contentsOf: shot.url) {
+        if shot.isVideo {
+            pasteboard.writeObjects([shot.url as NSURL])
+        } else if let image = NSImage(contentsOf: shot.url) {
             pasteboard.writeObjects([image])
         }
-        if announce { show(.copiedImage) }
+        if announce { show(shot.isVideo ? .copiedVideo : .copiedImage) }
     }
 
     func copyText(_ shot: Shot) {

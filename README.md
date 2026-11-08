@@ -74,7 +74,7 @@ Click the photo-stack icon in the menu bar to open a small panel:
 
 - **Today’s contact sheet.** Today’s prints as mini instant photos, grouped into morning, afternoon, and evening. Click one to open it, drag it into any app, or right-click to copy it, copy its text, or show it in Finder. With nothing printed yet, the panel shows the screenshot shortcuts instead.
 - **Quick switches.** Round toggles for **On Screen** (keep the pile visible), **Instant** (skip the five-second macOS thumbnail delay, on by default), **Auto Copy** (put every new screenshot on the clipboard), **Tidy** (file screenshots under `Desktop/Screenshots/<date>`, on by default), and **Sounds**.
-- **Everything else, one click away.** Open the screenshots folder, sweep the pile, replay the welcome tour, and open About, Settings, or Quit.
+- **Everything else, one click away.** Open the screenshots folder, sweep the pile, and open About, Settings, or Quit.
 
 <p align="center">
   <img src="docs/images/menu.png" width="360" alt="The menu bar panel with today’s prints, quick switches, and footer buttons">
@@ -127,7 +127,7 @@ Upload `build/WheredItGo.pkg` with Apple’s Transporter app.
 Sources/WheredItGo/
   App/       App entry point, the floating panel, the app icon artwork
   Model/     The desk model (watching, printing, the pile) and screenshot items
-  Views/     Camera, print, pile, menu, settings, and welcome views
+  Views/     Camera, print, pile, menu, settings, and about views
   Support/   Preferences, screenshot folder helpers, and sounds
   Debug/     Debug-only snapshot renderer for reviewing the UI
 Resources/   Info.plist, entitlements, privacy manifest, and the camera photo

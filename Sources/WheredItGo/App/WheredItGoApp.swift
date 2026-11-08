@@ -37,7 +37,7 @@ struct WheredItGoApp: App {
 
     var body: some Scene {
         MenuBarExtra {
-            MenuContent(model: appDelegate.model, showWelcome: appDelegate.showWelcome, showAbout: appDelegate.showAbout)
+            MenuContent(model: appDelegate.model, showAbout: appDelegate.showAbout)
         } label: {
             Image(systemName: "photo.stack")
                 .accessibilityLabel(Text("Where’d It Go?"))
@@ -54,7 +54,6 @@ struct WheredItGoApp: App {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let model = DeskModel()
     private var panel: DeskPanelController?
-    private var welcomeWindow: NSWindow?
     private var aboutWindow: NSWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -65,28 +64,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             if ScreenshotFolder.canChangeFloatingThumbnail, ScreenshotFolder.showsFloatingThumbnail {
                 ScreenshotFolder.setShowsFloatingThumbnail(false)
             }
-            showWelcome()
+            UserDefaults.standard.set(true, forKey: Prefs.hasOnboarded)
         }
-    }
-
-    func showWelcome() {
-        if welcomeWindow == nil {
-            let window = NSWindow(contentRect: .zero, styleMask: [.titled, .closable, .fullSizeContentView],
-                                  backing: .buffered, defer: false)
-            window.titlebarAppearsTransparent = true
-            window.titleVisibility = .hidden
-            window.isMovableByWindowBackground = true
-            window.isReleasedWhenClosed = false
-            window.title = String(localized: "Welcome to Where’d It Go?")
-            window.contentView = NSHostingView(rootView: WelcomeView(model: model) { [weak self] in
-                UserDefaults.standard.set(true, forKey: Prefs.hasOnboarded)
-                self?.welcomeWindow?.close()
-            })
-            window.center()
-            welcomeWindow = window
-        }
-        NSApp.activate()
-        welcomeWindow?.makeKeyAndOrderFront(nil)
     }
 
     func showAbout() {

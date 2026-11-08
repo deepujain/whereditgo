@@ -1,4 +1,5 @@
 import AppKit
+import AVFoundation
 import ImageIO
 import Observation
 import Vision
@@ -14,6 +15,8 @@ final class Shot: Identifiable {
     var image: NSImage?
     /// Every line of text Vision found, top to bottom.
     var text: String?
+    /// The length of a screen recording, once read.
+    var duration: TimeInterval?
     let tilt: Double
     let nudge: CGSize
 
@@ -21,12 +24,24 @@ final class Shot: Identifiable {
         self.url = url
         self.date = date
         self.app = app
-        title = app?.lowercased() ?? String(localized: "screenshot")
+        title = app?.lowercased() ?? (ScreenshotFolder.videoTypes.contains(url.pathExtension.lowercased())
+            ? String(localized: "recording") : String(localized: "screenshot"))
         tilt = .random(in: -7...7)
         nudge = CGSize(width: .random(in: -6...6), height: .random(in: -4...4))
     }
 
+    var isVideo: Bool { ScreenshotFolder.videoTypes.contains(url.pathExtension.lowercased()) }
+
     var time: String { date.formatted(date: .omitted, time: .shortened).lowercased() }
+
+    /// The recording's length as "0:12" or "1:04:09".
+    var length: String? {
+        guard let duration, duration.isFinite else { return nil }
+        let seconds = Int(duration.rounded())
+        let hours = seconds / 3600, minutes = seconds / 60 % 60
+        return hours > 0 ? String(format: "%d:%02d:%02d", hours, minutes, seconds % 60)
+            : String(format: "%d:%02d", minutes, seconds % 60)
+    }
 
     var subtitle: String {
         guard let app = app?.lowercased(), app != title else { return time }
@@ -34,7 +49,8 @@ final class Shot: Identifiable {
     }
 
     var accessibilityLabel: String {
-        String(localized: "Screenshot: \(title), \(subtitle)")
+        isVideo ? String(localized: "Screen recording: \(title), \(subtitle)")
+            : String(localized: "Screenshot: \(title), \(subtitle)")
     }
 
     /// The first few lines of recognized text, so VoiceOver can say what’s in the picture.
@@ -98,6 +114,23 @@ enum ShotImaging {
         ]
         guard let image = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else { return nil }
         return SendableImage(cgImage: image)
+    }
+
+    struct Frame: Sendable {
+        var image: SendableImage?
+        var duration: TimeInterval
+    }
+
+    /// A still from early in a screen recording, past any first blank frames.
+    static func frame(_ url: URL, maxPixel: Int) async -> Frame? {
+        let asset = AVURLAsset(url: url)
+        guard let duration = try? await asset.load(.duration).seconds, duration.isFinite else { return nil }
+        let generator = AVAssetImageGenerator(asset: asset)
+        generator.appliesPreferredTrackTransform = true
+        generator.maximumSize = CGSize(width: maxPixel, height: maxPixel)
+        let time = CMTime(seconds: min(1, duration * 0.2), preferredTimescale: 600)
+        let image = try? await generator.image(at: time).image
+        return Frame(image: image.map(SendableImage.init), duration: duration)
     }
 
     struct Reading: Sendable {

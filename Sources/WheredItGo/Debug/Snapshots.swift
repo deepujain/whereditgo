@@ -105,17 +105,14 @@ enum Snapshots {
         model.stageSweep(pointerInside: true, tossed: 0, swept: 6)
         try write(scene(model, size: Layout.pileSize), to: folder.appending(path: "8-undo.png"))
 
-        let welcome = WelcomeView(model: model) {}.background(Color(nsColor: .windowBackgroundColor))
-        try write(AnyView(welcome), to: folder.appending(path: "4-welcome.png"))
-
         try write(AnyView(SettingsView(model: model).background(Color(nsColor: .windowBackgroundColor))),
                   to: folder.appending(path: "5-settings.png"))
 
-        try write(AnyView(MenuContent(model: model, showWelcome: {}, showAbout: {}).background(.regularMaterial)),
+        try write(AnyView(MenuContent(model: model, showAbout: {}).background(.regularMaterial)),
                   to: folder.appending(path: "10-menu-empty.png"))
         model.stage(shots: shots, printing: nil, develop: 1, expanded: false, hint: false)
         MenuContent.drawsFlat = true
-        try write(AnyView(MenuContent(model: model, showWelcome: {}, showAbout: {}).background(.regularMaterial)),
+        try write(AnyView(MenuContent(model: model, showAbout: {}).background(.regularMaterial)),
                   to: folder.appending(path: "10-menu.png"))
         MenuContent.drawsFlat = false
         try write(AnyView(AboutView(model: model, animated: false).background(Color(nsColor: .windowBackgroundColor))),

@@ -3,7 +3,6 @@ import SwiftUI
 /// The menu bar panel: today’s prints as a contact sheet, quick switches, and the way to everything else.
 struct MenuContent: View {
     let model: DeskModel
-    let showWelcome: () -> Void
     let showAbout: () -> Void
 
     @AppStorage(Prefs.showPile) private var showPile = true
@@ -220,10 +219,6 @@ struct MenuContent: View {
 
             Spacer()
 
-            FooterButton(symbol: "sparkles", title: "Welcome Tour") {
-                closeMenu()
-                showWelcome()
-            }
             FooterButton(symbol: "info.circle", title: "About Where’d It Go?") {
                 closeMenu()
                 showAbout()
