@@ -479,7 +479,7 @@ final class DeskModel {
             lastPointerX = nil
             pointer = nil
             collapse(animated: true)
-            scheduleTuck(after: .seconds(3))
+            scheduleTuck(after: .seconds(2))
         }
     }
 
